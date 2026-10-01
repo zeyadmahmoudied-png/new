@@ -8,14 +8,20 @@ import java.util.concurrent.TimeUnit;
 public final class FcmPushProvider implements PushProvider {
     @Override public String providerName() { return "fcm"; }
     @Override public boolean isConfigured() { return true; }
+
     @Override public NotificationResult<String> getRegistrationToken() {
         try {
             String token = Tasks.await(FirebaseMessaging.getInstance().getToken(), 12, TimeUnit.SECONDS);
-            return token == null || token.isEmpty() ? NotificationResult.unknown("FCM token empty")
+            return token == null || token.isEmpty()
+                    ? NotificationResult.notConfigured()
                     : NotificationResult.success(token);
-        } catch (Throwable t) { return NotificationResult.unknown("FCM unavailable"); }
+        } catch (Throwable t) {
+            return NotificationResult.notConfigured();
+        }
     }
+
     @Override public NotificationResult<Void> sendTestPush() {
-        return NotificationResult.validation(0, "الإرسال يتم من Control Center، وليس من الجهاز");
+        // Test sends are intentionally performed by the Control Center/backend.
+        return NotificationResult.notConfigured();
     }
 }
