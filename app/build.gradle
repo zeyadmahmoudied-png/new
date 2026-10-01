@@ -1,0 +1,82 @@
+plugins { id 'com.android.application' }
+
+// Firebase is enabled when google-services.json is supplied for com.myplan.app.
+// The plugin is applied conditionally so the source archive remains buildable without the private project file.
+if (rootProject.file('app/google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}
+
+def keystorePropertiesFile = rootProject.file('keystore/keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localProps.load(new FileInputStream(localPropsFile))
+}
+// Publishable/Anon only — never put service_role in the APK
+def supabaseUrl = (localProps.getProperty('supabase.url') ?: '').replace('"', '\\"')
+def supabaseAnon = (localProps.getProperty('supabase.anonKey') ?: '').replace('"', '\\"')
+def localDevHash = (localProps.getProperty('myplan.debugDevPasswordSha256') ?: '')
+
+android {
+    namespace 'com.myplan.app'
+    compileSdk 34
+    buildFeatures {
+        buildConfig true
+    }
+    defaultConfig {
+        applicationId 'com.myplan.app'
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+        buildConfigField "String", "SUPABASE_URL", "\"${supabaseUrl}\""
+        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${supabaseAnon}\""
+        buildConfigField "String", "LOCAL_DEV_PASS_SHA256", "\"${localDevHash}\""
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                // ضمان توقيع v1+v2 لتوافق التثبيت على أجهزة Android المختلفة
+                v1SigningEnabled true
+                v2SigningEnabled true
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            debuggable false
+            // Release signing is supplied by the build environment; no keystore is shipped in source.
+            if (keystorePropertiesFile.exists()) signingConfig signingConfigs.release
+        }
+        debug {
+            debuggable true
+        }
+    }
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-messaging'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

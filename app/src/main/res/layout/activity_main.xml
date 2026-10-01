@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#070A10"
+    android:layoutDirection="rtl"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:id="@+id/content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="#0C111A"
+        android:orientation="horizontal">
+
+        <TextView android:id="@+id/navToday" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="جدولي" android:textColor="#3B6BFF" android:textSize="12.5sp" />
+        <TextView android:id="@+id/navTasks" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="المهام" android:textColor="#8B93A7" android:textSize="12.5sp" />
+        <TextView android:id="@+id/navStats" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="إحصائيات" android:textColor="#8B93A7" android:textSize="12.5sp" />
+        <TextView android:id="@+id/navSettings" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="الروتين" android:textColor="#8B93A7" android:textSize="12.5sp" />
+    </LinearLayout>
+</LinearLayout>
