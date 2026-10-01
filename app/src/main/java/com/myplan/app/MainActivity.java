@@ -434,6 +434,32 @@ public class MainActivity extends Activity {
         root.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        // Header ثابت وواضح للهوية بدل بداية شاشة فارغة
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(20), dp(14), dp(20), dp(10));
+        header.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+
+        TextView brand = new TextView(this);
+        brand.setText("MY PLAN");
+        brand.setTextColor(TEXT);
+        brand.setTextSize(19f);
+        brand.setTypeface(Typeface.DEFAULT_BOLD);
+        brand.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView brandDot = new TextView(this);
+        brandDot.setText("  •  خطتك بوضوح");
+        brandDot.setTextColor(MUTED);
+        brandDot.setTextSize(11f);
+        brandDot.setGravity(Gravity.CENTER_VERTICAL);
+
+        header.addView(brand, new LinearLayout.LayoutParams(0, dp(42), 1f));
+        header.addView(brandDot, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(42)));
+        root.addView(header, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         content = new FrameLayout(this);
         root.addView(content, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -448,7 +474,7 @@ public class MainActivity extends Activity {
         navBg.setColor(CARD);
         navBg.setCornerRadius(dp(RADIUS));
         nav.setBackground(navBg);
-        nav.setPadding(dp(6), dp(8), dp(6), dp(8));
+        nav.setPadding(dp(6), dp(6), dp(6), dp(6));
         nav.setElevation(dp(8));
         navWrap.addView(nav, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(60)));
@@ -481,11 +507,22 @@ public class MainActivity extends Activity {
         t.setTextColor(MUTED);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setPadding(dp(2), dp(8), dp(2), dp(8));
+        t.setMinHeight(dp(48));
+        t.setAllCaps(false);
         return t;
     }
 
     private LinearLayout.LayoutParams navLp() {
         return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+    }
+
+    private void setNavState(TextView view, boolean active) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(12));
+        bg.setColor(active ? ACCENT_SOFT : Color.TRANSPARENT);
+        view.setBackground(bg);
+        view.setTextColor(active ? TEXT : MUTED);
+        view.setTypeface(Typeface.DEFAULT_BOLD);
     }
 
     private void showTab(int t) {
@@ -498,11 +535,11 @@ public class MainActivity extends Activity {
             AppInfrastructure.setDeveloperUnlocked(this, false);
         }
         tab = t;
-        navSchedule.setTextColor(t == 0 ? ACCENT : MUTED);
-        navTasks.setTextColor(t == 1 ? ACCENT : MUTED);
-        navStats.setTextColor(t == 2 ? ACCENT : MUTED);
-        navExams.setTextColor(t == 3 ? ACCENT : MUTED);
-        navRoutine.setTextColor(t == 4 ? ACCENT : MUTED);
+        setNavState(navSchedule, t == 0);
+        setNavState(navTasks, t == 1);
+        setNavState(navStats, t == 2);
+        setNavState(navExams, t == 3);
+        setNavState(navRoutine, t == 4);
         updateMoreNavBadge();
         content.removeAllViews();
         if (t == 0) { weekView = false; content.addView(buildScheduleScreen()); maybeOfferMissedSessions(); }
