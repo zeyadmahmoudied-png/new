@@ -3,6 +3,8 @@ name: Build My Plan APK
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       build_type:
@@ -10,9 +12,7 @@ on:
         required: true
         default: release
         type: choice
-        options:
-          - release
-          - debug
+        options: [release, debug]
 
 permissions:
   contents: read
@@ -21,96 +21,49 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
       BUILD_TYPE: ${{ inputs.build_type || 'release' }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
-
       - name: Prepare Android SDK
-        shell: bash
         run: |
           set -euo pipefail
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKMANAGER" ]; then
-            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -perm -u+x 2>/dev/null | head -n 1 || true)"
-          fi
-          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
-            echo "Android SDK command-line tools were not found on the GitHub runner."
-            exit 1
-          fi
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/build-tools/34.0.0" >> "$GITHUB_PATH"
-          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -perm -u+x 2>/dev/null | head -n 1 || true)"; fi
+          test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-
       - name: Create local build configuration
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        shell: bash
         run: |
-          set -euo pipefail
-          {
-            echo "sdk.dir=$ANDROID_HOME"
-            if [ -n "${SUPABASE_URL:-}" ]; then echo "supabase.url=$SUPABASE_URL"; fi
-            if [ -n "${SUPABASE_ANON_KEY:-}" ]; then echo "supabase.anonKey=$SUPABASE_ANON_KEY"; fi
-          } > local.properties
-
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          [ -z "${SUPABASE_URL:-}" ] || echo "supabase.url=$SUPABASE_URL" >> local.properties
+          [ -z "${SUPABASE_ANON_KEY:-}" ] || echo "supabase.anonKey=$SUPABASE_ANON_KEY" >> local.properties
       - name: Create temporary CI signing key
         if: ${{ env.BUILD_TYPE != 'debug' }}
-        shell: bash
         run: |
-          set -euo pipefail
           mkdir -p keystore
           keytool -genkeypair -v -keystore keystore/ci.jks -storepass changeit -keypass changeit -alias myplan-ci -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=My Plan CI, OU=Build, O=My Plan, C=EG"
-          cat > keystore/keystore.properties <<'PROPS'
-storeFile=keystore/ci.jks
-storePassword=changeit
-keyAlias=myplan-ci
-keyPassword=changeit
-PROPS
-
+          printf '%s\n' 'storeFile=keystore/ci.jks' 'storePassword=changeit' 'keyAlias=myplan-ci' 'keyPassword=changeit' > keystore/keystore.properties
       - name: Build APK
-        shell: bash
         run: |
-          set -euo pipefail
           chmod +x ./gradlew
-          if [ "$BUILD_TYPE" = "debug" ]; then
-            ./gradlew :app:assembleDebug --no-daemon --stacktrace
-          else
-            ./gradlew :app:assembleRelease --no-daemon --stacktrace
-          fi
-
+          if [ "$BUILD_TYPE" = "debug" ]; then ./gradlew :app:assembleDebug --no-daemon --stacktrace; else ./gradlew :app:assembleRelease --no-daemon --stacktrace; fi
       - name: Collect APK and checksum
-        shell: bash
         run: |
-          set -euo pipefail
           mkdir -p artifacts
-          if [ "$BUILD_TYPE" = "debug" ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk artifacts/MyPlan-debug.apk
-          else
-            cp app/build/outputs/apk/release/app-release.apk artifacts/MyPlan-release.apk
-            if [ -f app/build/outputs/mapping/release/mapping.txt ]; then
-              cp app/build/outputs/mapping/release/mapping.txt artifacts/mapping.txt
-            fi
-          fi
+          if [ "$BUILD_TYPE" = "debug" ]; then cp app/build/outputs/apk/debug/app-debug.apk artifacts/MyPlan-debug.apk; else cp app/build/outputs/apk/release/app-release.apk artifacts/MyPlan-release.apk; fi
           sha256sum artifacts/*.apk | tee artifacts/SHA256SUMS.txt
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: MyPlan-${{ env.BUILD_TYPE }}
           path: artifacts/
