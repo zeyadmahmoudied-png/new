@@ -2,7 +2,7 @@ name: Build My Plan APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, build-apk]
   pull_request:
     branches: [main]
   workflow_dispatch:
