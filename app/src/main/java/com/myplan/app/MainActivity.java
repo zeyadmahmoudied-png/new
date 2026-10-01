@@ -3491,6 +3491,17 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    private LinearLayout.LayoutParams cardLp() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(10);
+        return lp;
+    }
+
+    private void showTaskDialog(Planner.Task existing) {
+        showAddTaskDialog(existing);
+    }
+
     private void showAddTaskDialog(Planner.Task existing) {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
