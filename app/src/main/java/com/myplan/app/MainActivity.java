@@ -759,13 +759,21 @@ public class MainActivity extends Activity {
             box.addView(nextHeader);
 
             int shown = 0;
+            LinearLayout dayZone = new LinearLayout(this);
+            dayZone.setOrientation(LinearLayout.VERTICAL);
+            dayZone.setTag(today);
+            dayZone.setBackgroundColor(Color.TRANSPARENT);
             for (Planner.Session s : list) {
                 if (s == featured || s.done) continue;
-                box.addView(sessionCard(s));
+                dayZone.addView(sessionCard(s));
                 shown++;
             }
             if (shown == 0) {
                 box.addView(muted("مفيش جلسات تالية حاليًا."));
+            } else {
+                box.addView(dayZone);
+                dayDropZones.put(today, dayZone);
+                attachDayDropListener(dayZone, today);
             }
 
             List<int[]> prayers = planner.prayerBlocksToday();
@@ -892,8 +900,9 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(18),dp(16),dp(18),dp(16));
+        int pri = priorityColor(s.priority);
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF4767F2,0xFF6A4BE8});
+                new int[]{blendColors(pri, Color.WHITE, 0.16f), blendColors(pri, Color.BLACK, 0.18f)});
         bg.setCornerRadius(dp(24));
         card.setBackground(bg);
 
@@ -951,6 +960,16 @@ public class MainActivity extends Activity {
         return card;
     }
 
+
+    private int blendColors(int base, int overlay, float amount) {
+        amount = Math.max(0f, Math.min(1f, amount));
+        int br = (base >> 16) & 0xFF, bg = (base >> 8) & 0xFF, bb = base & 0xFF;
+        int or = (overlay >> 16) & 0xFF, og = (overlay >> 8) & 0xFF, ob = overlay & 0xFF;
+        int r = Math.round(br + (or - br) * amount);
+        int g = Math.round(bg + (og - bg) * amount);
+        int b = Math.round(bb + (ob - bb) * amount);
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
 
     private String formatMinutesAr(int min) {
         if (min <= 0) return "0 دقيقة";
@@ -1028,98 +1047,88 @@ public class MainActivity extends Activity {
         LinearLayout card = card();
         card.setOrientation(LinearLayout.VERTICAL);
 
-        // ملخص مضغوط: اسم · مادة · وقت
+        int priColor = priorityColor(s.priority);
+        GradientDrawable cardBg = new GradientDrawable();
+        cardBg.setCornerRadius(dp(RADIUS));
+        if (s.done) {
+            cardBg.setColor(blendColors(CARD, OK, 0.12f));
+            cardBg.setStroke(dp(1), blendColors(CARD, OK, 0.45f));
+        } else {
+            int nowM = Planner.nowMinOfDay();
+            boolean isToday = s.day != null && s.day.equals(Planner.todayStr());
+            boolean current = isToday && s.startMin <= nowM
+                    && nowM < (s.endMin <= s.startMin ? s.endMin + 24 * 60 : s.endMin);
+            cardBg.setColor(current ? blendColors(CARD, ACCENT, 0.20f)
+                    : blendColors(CARD, priColor, 0.14f));
+            cardBg.setStroke(dp(current ? 2 : 1),
+                    current ? ACCENT : blendColors(CARD, priColor, 0.42f));
+        }
+        card.setBackground(cardBg);
+
         LinearLayout summary = new LinearLayout(this);
         summary.setOrientation(LinearLayout.VERTICAL);
 
         LinearLayout titleRow = new LinearLayout(this);
         titleRow.setOrientation(LinearLayout.HORIZONTAL);
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        titleRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
         View priDot = new View(this);
         GradientDrawable dotBg = new GradientDrawable();
         dotBg.setShape(GradientDrawable.OVAL);
-        dotBg.setColor(priorityColor(s.priority));
+        dotBg.setColor(priColor);
         priDot.setBackground(dotBg);
-        titleRow.addView(priDot, new LinearLayout.LayoutParams(dp(8), dp(8)));
+        titleRow.addView(priDot, new LinearLayout.LayoutParams(dp(9), dp(9)));
         titleRow.addView(space(dp(8)));
 
         TextView name = new TextView(this);
-        name.setText(s.taskName);
+        name.setText(s.taskName == null ? "—" : s.taskName);
         name.setTextColor(s.done ? OK : TEXT);
-        name.setTextSize(15.5f);
+        name.setTextSize(16.5f);
         name.setTypeface(Typeface.DEFAULT_BOLD);
         if (s.done) name.setPaintFlags(name.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
         titleRow.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        if (s.done) {
-            TextView done = new TextView(this);
-            done.setText("تم ✓");
-            done.setTextColor(OK);
-            done.setTextSize(12);
-            done.setTypeface(Typeface.DEFAULT_BOLD);
-            titleRow.addView(done);
-        }
+        TextView time = muted(s.timeLabel());
+        time.setTextColor(MUTED);
+        time.setTextSize(12);
+        titleRow.addView(time);
         summary.addView(titleRow);
 
         String subj = (s.subject == null || s.subject.isEmpty()) ? "—" : s.subject;
-        TextView subLine = muted(subj + "  ·  " + s.durationMin + " د");
-        subLine.setTextSize(13);
-        summary.addView(subLine);
-        TextView timeLine = new TextView(this);
-        timeLine.setText(s.timeLabel());
-        timeLine.setTextColor(MUTED);
-        timeLine.setTextSize(13);
-        timeLine.setTypeface(Typeface.DEFAULT_BOLD);
-        summary.addView(timeLine);
+        TextView meta = muted(subj + "  ·  " + s.durationMin + " دقيقة");
+        meta.setTextSize(12.5f);
+        meta.setPadding(0, dp(7), 0, 0);
+        summary.addView(meta);
         card.addView(summary);
 
-        // حالة بصرية حسب حالة الجلسة
-        GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setCornerRadius(dp(RADIUS));
-        if (s.done) {
-            cardBg.setColor(0xFF101820);
-            cardBg.setStroke(dp(1), 0x553DCF8E);
-        } else {
-            int nowM = Planner.nowMinOfDay();
-            boolean isToday = s.day != null && s.day.equals(Planner.todayStr());
-            boolean current = isToday && s.startMin <= nowM && nowM < (s.endMin <= s.startMin ? s.endMin + 24 * 60 : s.endMin);
-            if (current) {
-                cardBg.setColor(0xFF152038);
-                cardBg.setStroke(dp(2), ACCENT);
-            } else {
-                cardBg.setColor(CARD);
-            }
-        }
-        card.setBackground(cardBg);
-
-        // تفاصيل تُوسَّع عند الضغط (نفس البطاقة)
         LinearLayout details = new LinearLayout(this);
         details.setOrientation(LinearLayout.VERTICAL);
         details.setVisibility(View.GONE);
-        details.setPadding(0, dp(10), 0, 0);
+        details.setPadding(0, dp(12), 0, 0);
 
         String pri = Planner.PRIORITY_LABELS[Math.max(0, Math.min(2, s.priority))];
         String type = s.backlog ? "قديمة" : "جديدة";
         String flags = "";
         if (s.userPinned) flags += " · مثبت";
         if (s.missed && !s.done) flags += " · فائتة";
-        details.addView(muted(s.durationMin + " د · جلسة " + s.sessionIndex + "/" + s.sessionTotal
-                + " · " + pri + " · " + type + flags));
+        details.addView(muted("الوقت: " + s.timeLabel()));
+        details.addView(muted("المدة: " + s.durationMin + " د · جلسة " + s.sessionIndex + " من " + s.sessionTotal));
+        details.addView(muted("الأولوية: " + pri + " · " + type + flags));
+        if (s.executedMin > 0) details.addView(muted("تم تنفيذ: " + s.executedMin + " د · المتبقي: " + s.remainingDurationMin() + " د"));
 
         if (!s.done) {
             LinearLayout actions = new LinearLayout(this);
             actions.setOrientation(LinearLayout.HORIZONTAL);
-            actions.setPadding(0, dp(8), 0, 0);
+            actions.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
             TextView start = link("ابدأ");
             start.setOnClickListener(v -> openTimer(s));
             actions.addView(start);
-            actions.addView(space(dp(12)));
+            actions.addView(space(dp(14)));
             TextView mark = link("تم الإنجاز");
             mark.setOnClickListener(v -> finishSessionWithChoice(s));
             actions.addView(mark);
-            actions.addView(space(dp(12)));
-            // «نقل» أُزيل من الواجهة — التعديل عبر قلم اليوم (تأجيل بالدقائق)
+            actions.addView(space(dp(14)));
             TextView dur = link("المدة");
             dur.setOnClickListener(v -> showAdjustDurationDialog(s));
             actions.addView(dur);
@@ -1130,11 +1139,15 @@ public class MainActivity extends Activity {
                 actions.addView(rec);
             }
             details.addView(actions);
+        } else {
+            TextView done = link("مكتملة ✓");
+            done.setTextColor(OK);
+            details.addView(done);
         }
         card.addView(details);
 
         final boolean[] open = {false};
-        View.OnClickListener toggleOrEdit = v -> {
+        View.OnClickListener toggle = v -> {
             if (dayEditMode && !s.done) {
                 showPostponeSessionDialog(s);
                 return;
@@ -1142,19 +1155,18 @@ public class MainActivity extends Activity {
             open[0] = !open[0];
             details.setVisibility(open[0] ? View.VISIBLE : View.GONE);
         };
-        summary.setOnClickListener(toggleOrEdit);
-        card.setOnClickListener(toggleOrEdit);
+        summary.setOnClickListener(toggle);
+        card.setOnClickListener(toggle);
 
-        // Free Drag: ضغط مطوّل ثم سحب بالإصبع (خاصة الأسبوع)
-        if (!s.done) {
-            enableSessionFreeDrag(card, s);
-        }
+        if (!s.done) enableSessionFreeDrag(card, s);
+
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = dp(8);
+        lp.bottomMargin = dp(9);
         card.setLayoutParams(lp);
         return card;
     }
+
 
 
     /**
