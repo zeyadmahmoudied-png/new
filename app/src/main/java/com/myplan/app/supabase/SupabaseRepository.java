@@ -207,20 +207,14 @@ public final class SupabaseRepository {
             } catch (Exception ignored) {}
             return;
         }
-        // جرّب UUID المحوّل ثم local id ثم installation_id
+        // premium_grants is protected by RLS; read through the client-safe RPC.
         ApiResult<String> r = null;
-        if (!remoteUid.isEmpty()) {
-            r = http.get("/rest/v1/premium_grants?select=*&user_id=eq." + urlEncode(remoteUid) + "&limit=20");
-        }
-        if (r == null || !r.isSuccess() || r.data == null || "[]".equals(r.data.trim())) {
-            if (userId != null && !userId.isEmpty()) {
-                r = http.get("/rest/v1/premium_grants?select=*&user_id=eq." + urlEncode(userId) + "&limit=20");
-            }
-        }
-        if (r == null || !r.isSuccess() || r.data == null || "[]".equals(r.data.trim())) {
-            String inst = AppInfrastructure.getInstallationId(app);
-            r = http.get("/rest/v1/premium_grants?select=*&installation_id=eq." + urlEncode(inst) + "&limit=20");
-        }
+        try {
+            JSONObject body = new JSONObject();
+            if (!remoteUid.isEmpty()) body.put("p_user_id", remoteUid); else body.put("p_user_id", JSONObject.NULL);
+            body.put("p_installation_id", AppInfrastructure.getInstallationId(app));
+            r = http.post("/rest/v1/rpc/myplan_get_premium_grants", body.toString());
+        } catch (Exception ignored) {}
         boolean active = false;
         JSONArray featureKeys = new JSONArray();
         if (r != null && r.isSuccess() && r.data != null) {
