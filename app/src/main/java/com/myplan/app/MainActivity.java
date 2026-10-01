@@ -705,7 +705,6 @@ public class MainActivity extends Activity {
             box.addView(muted("عرض ومراجعة للجدول الحالي"));
             box.addView(space(dp(14)));
             // احتفظ بعرض الأسبوع الموجود في التطبيق من خلال قائمة الجلسات.
-            for (String d : WEEK_ORDER == null ? new String[0] : new String[0]) {}
             java.util.List<Planner.Session> all = new java.util.ArrayList<>(planner.sessions);
             Collections.sort(all, (a,b) -> Integer.compare(a.startMin,b.startMin));
             String lastDay = "";
@@ -752,9 +751,6 @@ public class MainActivity extends Activity {
         summary.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         CircularProgressView ring = new CircularProgressView(this);
         ring.setProgress(pct);
-        ring.setStroke(dp(10));
-        ring.setProgressColor(ACCENT);
-        ring.setTrackColor(CARD2);
         summary.addView(ring, new LinearLayout.LayoutParams(dp(88),dp(88)));
 
         LinearLayout sumText = new LinearLayout(this);
@@ -3987,9 +3983,6 @@ public class MainActivity extends Activity {
         hero.setPadding(dp(20),dp(18),dp(20),dp(18));
         CircularProgressView ring=new CircularProgressView(this);
         ring.setProgress(pct/100f);
-        ring.setStroke(dp(10));
-        ring.setProgressColor(Color.WHITE);
-        ring.setTrackColor(0x446B7CFF);
         hero.addView(ring,new LinearLayout.LayoutParams(dp(100),dp(100)));
         LinearLayout tx=new LinearLayout(this);
         tx.setOrientation(LinearLayout.VERTICAL);
