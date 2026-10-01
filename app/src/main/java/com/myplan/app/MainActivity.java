@@ -952,6 +952,26 @@ public class MainActivity extends Activity {
     }
 
 
+    private String formatMinutesAr(int min) {
+        if (min <= 0) return "0 دقيقة";
+        int h = min / 60, m = min % 60;
+        if (h > 0 && m > 0) return h + " ساعة " + m + " دقيقة";
+        return h > 0 ? h + " ساعة" : m + " دقيقة";
+    }
+
+    private void showSessionMoreMenu(Planner.Session s, View anchor) {
+        if (s == null) return;
+        if (s.missed && !s.done) {
+            showFloatingChoices(anchor, new String[]{"المدة", "إعادة جدولة"}, 0, idx -> {
+                if (idx == 0) showAdjustDurationDialog(s);
+                else showMissedSessionChoices(s);
+            });
+        } else {
+            showFloatingChoices(anchor, new String[]{"المدة"}, 0, idx -> showAdjustDurationDialog(s));
+        }
+    }
+
+
     /** simple horizontal scroll container */
     private static class HorizontalScrollWrap extends android.widget.HorizontalScrollView {
         HorizontalScrollWrap(android.content.Context ctx) {
