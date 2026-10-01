@@ -58,20 +58,26 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
     // Premium design tokens — أسود + Accent من شعار My Plan
-    private static final int BG = 0xFF07090E;
-    private static final int BG_ELEV = 0xFF0E121A;
-    private static final int CARD = 0xFF141A24;
-    private static final int CARD2 = 0xFF1A2130;
-    private static final int TEXT = 0xFFF4F6FA;
-    private static final int MUTED = 0xFF8E98AB;
-    private static final int MUTED2 = 0xFF5C6678;
-    private static final int ACCENT = 0xFF4B6DFF; // لون شعار My Plan
-    private static final int ACCENT_SOFT = 0x334B6DFF;
-    private static final int ACCENT_DARK = 0xFFFFFFFF;
-    private static final int OK = 0xFF3DCF8E;       // أولوية منخفضة
-    private static final int WARN = 0xFFE6B84D;     // أولوية متوسطة
-    private static final int DANGER = 0xFFE25563;   // أولوية عالية
-    private static final int OVERLAY = 0xCC07090E;
+    // ثيم التطبيق: الوضع الداكن هو الافتراضي، والوضع الفاتح يغيّر لوحة الألوان كاملة.
+    private static int BG = 0xFF07090E;
+    private static int BG_ELEV = 0xFF0E121A;
+    private static int CARD = 0xFF141A24;
+    private static int CARD2 = 0xFF1A2130;
+    private static int TEXT = 0xFFF4F6FA;
+    private static int MUTED = 0xFF8E98AB;
+    private static int MUTED2 = 0xFF5C6678;
+    private static int ACCENT = 0xFF4B6DFF; // لون شعار My Plan
+    private static int ACCENT_SOFT = 0x334B6DFF;
+    private static int ACCENT_DARK = 0xFFFFFFFF;
+    private static int SELECTED_BG = 0xFFF4F6FA;   // الاختيار الفعّال: فاتح في الداكن
+    private static int SELECTED_TEXT = 0xFF07090E;
+    private static int OK = 0xFF3DCF8E;
+    private static int WARN = 0xFFE6B84D;
+    private static int DANGER = 0xFFE25563;
+    private static int OVERLAY = 0xCC07090E;
+
+    private static final String THEME_PREFS = "myplan_theme";
+    private static final String THEME_LIGHT_KEY = "light_theme";
     private static final int RADIUS = 16;
     private static final int RADIUS_SM = 12;
 
@@ -140,9 +146,53 @@ public class MainActivity extends Activity {
             Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY
     };
 
+    private boolean isLightTheme() {
+        return getSharedPreferences(THEME_PREFS, MODE_PRIVATE).getBoolean(THEME_LIGHT_KEY, false);
+    }
+
+    private void applyThemePalette() {
+        if (isLightTheme()) {
+            BG = 0xFFF6F7F9;
+            BG_ELEV = 0xFFFFFFFF;
+            CARD = 0xFFFFFFFF;
+            CARD2 = 0xFFE9EDF2;
+            TEXT = 0xFF151A22;
+            MUTED = 0xFF667085;
+            MUTED2 = 0xFF98A2B3;
+            ACCENT = 0xFF4B6DFF;
+            ACCENT_SOFT = 0x1A4B6DFF;
+            ACCENT_DARK = 0xFFFFFFFF;
+            SELECTED_BG = 0xFF151A22;
+            SELECTED_TEXT = 0xFFFFFFFF;
+            OVERLAY = 0x99000000;
+        } else {
+            BG = 0xFF07090E;
+            BG_ELEV = 0xFF0E121A;
+            CARD = 0xFF141A24;
+            CARD2 = 0xFF1A2130;
+            TEXT = 0xFFF4F6FA;
+            MUTED = 0xFF8E98AB;
+            MUTED2 = 0xFF5C6678;
+            ACCENT = 0xFF4B6DFF;
+            ACCENT_SOFT = 0x334B2130;
+            ACCENT_SOFT = 0x334B6DFF;
+            ACCENT_DARK = 0xFFFFFFFF;
+            SELECTED_BG = 0xFFF4F6FA;
+            SELECTED_TEXT = 0xFF07090E;
+            OVERLAY = 0xCC07090E;
+        }
+    }
+
+    private void setLightTheme(boolean light) {
+        getSharedPreferences(THEME_PREFS, MODE_PRIVATE)
+                .edit().putBoolean(THEME_LIGHT_KEY, light).apply();
+        recreate();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        applyThemePalette();
         AppInfrastructure.onLaunch(this);
         // بوابة: لا واجهة My Plan بدون جلسة صالحة
         if (!AccountAuth.isLoggedIn(this)) {
@@ -519,9 +569,9 @@ public class MainActivity extends Activity {
     private void setNavState(TextView view, boolean active) {
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(12));
-        bg.setColor(active ? ACCENT_SOFT : Color.TRANSPARENT);
+        bg.setColor(active ? SELECTED_BG : Color.TRANSPARENT);
         view.setBackground(bg);
-        view.setTextColor(active ? TEXT : MUTED);
+        view.setTextColor(active ? SELECTED_TEXT : MUTED);
         view.setTypeface(Typeface.DEFAULT_BOLD);
     }
 
@@ -4301,6 +4351,10 @@ public class MainActivity extends Activity {
         box.addView(title("المزيد"));
         box.addView(space(dp(8)));
 
+        // المظهر — الداكن الحالي + ثيم فاتح كامل
+        box.addView(moreExpandableCard("appearance", "المظهر", moreAppearanceBody()));
+        box.addView(space(dp(10)));
+
         // 1) المواد
         box.addView(moreExpandableCard("subjects", "المواد", moreSubjectsBody()));
         box.addView(space(dp(10)));
@@ -4425,6 +4479,22 @@ public class MainActivity extends Activity {
         card.setClickable(true);
         card.setOnClickListener(v -> header.performClick());
         return card;
+    }
+
+    private View moreAppearanceBody() {
+        LinearLayout b = new LinearLayout(this);
+        b.setOrientation(LinearLayout.VERTICAL);
+        b.addView(muted(isLightTheme()
+                ? "الثيم الحالي: فاتح"
+                : "الثيم الحالي: داكن"));
+        b.addView(space(dp(8)));
+
+        TextView toggle = chip(isLightTheme() ? "التبديل إلى الداكن" : "التبديل إلى الفاتح", false);
+        toggle.setOnClickListener(v -> setLightTheme(!isLightTheme()));
+        b.addView(toggle);
+        b.addView(space(dp(6)));
+        b.addView(muted("الثيم الفاتح يغيّر خلفيات التطبيق والكروت والنصوص بالكامل، ويمكنك الرجوع للداكن في أي وقت."));
+        return b;
     }
 
     private View moreSubjectsBody() {
@@ -6374,8 +6444,8 @@ public class MainActivity extends Activity {
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(RADIUS_SM));
         if (on) {
-            bg.setColor(ACCENT);
-            t.setTextColor(ACCENT_DARK);
+            bg.setColor(SELECTED_BG);
+            t.setTextColor(SELECTED_TEXT);
             t.setTypeface(Typeface.DEFAULT_BOLD);
         } else {
             bg.setColor(CARD2);
