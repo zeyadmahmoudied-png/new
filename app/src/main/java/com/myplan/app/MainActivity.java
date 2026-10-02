@@ -4405,12 +4405,6 @@ private void showUserGuide() {
         showTab(4);
     }
 
-    private void showUserGuide() {
-        guideMode = 1;
-        guideTopic = -1;
-        showTab(4);
-    }
-
     private void openGuideTopic(int index) {
         guideMode = 2;
         guideTopic = index;
