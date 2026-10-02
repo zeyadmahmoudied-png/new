@@ -78,11 +78,11 @@ jobs:
           mkdir -p keystore
           keytool -genkeypair -v -keystore keystore/ci.jks -storepass changeit -keypass changeit -alias myplan-ci -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=My Plan CI, OU=Build, O=My Plan, C=EG"
           cat > keystore/keystore.properties <<'PROPS'
-storeFile=keystore/ci.jks
-storePassword=changeit
-keyAlias=myplan-ci
-keyPassword=changeit
-PROPS
+            storeFile=keystore/ci.jks
+            storePassword=changeit
+            keyAlias=myplan-ci
+            keyPassword=changeit
+            PROPS
 
       - name: Build APK
         shell: bash
