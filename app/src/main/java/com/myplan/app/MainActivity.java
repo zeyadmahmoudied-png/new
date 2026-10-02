@@ -4342,7 +4342,70 @@ public class MainActivity extends Activity {
         }
     }
 
-    private View buildRoutineScreen() {
+    private View buildUserGuideContent() {
+        ScrollView sc = new ScrollView(this);
+        sc.setFillViewport(true);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(18), dp(18), dp(28));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        sc.addView(box);
+
+        String[] sections = guideSections();
+        String[] bodies = guideBodies();
+
+        if (guideMode == 2 && guideTopic >= 0 && guideTopic < sections.length) {
+            TextView back = link("→ رجوع لقائمة الدليل");
+            back.setOnClickListener(v -> {
+                guideMode = 1;
+                guideTopic = -1;
+                showTab(4);
+            });
+            box.addView(back);
+            box.addView(space(dp(12)));
+            TextView h = title(sections[guideTopic]);
+            box.addView(h);
+            box.addView(space(dp(8)));
+            TextView body = new TextView(this);
+            body.setText(bodies[guideTopic]);
+            body.setTextColor(TEXT);
+            body.setTextSize(14);
+            body.setLineSpacing(dp(4), 1.15f);
+            box.addView(body);
+            box.addView(space(dp(20)));
+            TextView close = chip("إغلاق الدليل", false);
+            close.setOnClickListener(v -> closeUserGuide());
+            box.addView(close);
+            return sc;
+        }
+
+        // قائمة المواضيع
+        TextView backMore = link("→ رجوع للمزيد");
+        backMore.setOnClickListener(v -> closeUserGuide());
+        box.addView(backMore);
+        box.addView(space(dp(8)));
+        box.addView(title("دليل المستخدم"));
+        box.addView(muted("اختر موضوعًا لمعرفة معناه ومتى تستخدمه."));
+        box.addView(space(dp(12)));
+        for (int i = 0; i < sections.length; i++) {
+            final int idx = i;
+            TextView row = chip(sections[i], false);
+            row.setOnClickListener(v -> openGuideTopic(idx));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = dp(6);
+            box.addView(row, lp);
+        }
+        return sc;
+    }
+
+private void showUserGuide() {
+        guideMode = 1;
+        guideTopic = -1;
+        showTab(4);
+    }
+
+private View buildRoutineScreen() {
         if (showingContactUs) return buildContactUsScreen();
         ScrollView sc = new ScrollView(this);
         LinearLayout box = new LinearLayout(this);
