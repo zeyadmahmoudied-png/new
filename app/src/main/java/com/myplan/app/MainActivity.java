@@ -14,6 +14,8 @@ import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.SweepGradient;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -37,6 +39,7 @@ import android.widget.NumberPicker;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
+import android.widget.Space;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -4031,104 +4034,184 @@ public class MainActivity extends Activity {
 
     private View buildStatsScreen() {
         ScrollView sc = new ScrollView(this);
+        sc.setFillViewport(true);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(18), dp(18), dp(18), dp(28));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         sc.addView(box);
 
         box.addView(title("الإحصائيات"));
-
-        // ثلاثة عدادات فعلية: اليوم · الأسبوع · مخصص (إن وُجد)
-        LinearLayout gaugesRow = new LinearLayout(this);
-        gaugesRow.setOrientation(LinearLayout.HORIZONTAL);
-        gaugesRow.setGravity(Gravity.CENTER);
-        gaugesRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-
-        float todayPct = sessionCompletionRatio(Planner.todayStr(), Planner.todayStr());
-        gaugesRow.addView(miniGaugeBlock("اليوم", todayPct));
-
-        // أسبوع My Plan: السبت → الجمعة حول اليوم الحالي
-        String[] weekRange = currentWeekRangeInclusive();
-        float weekPct = sessionCompletionRatio(weekRange[0], weekRange[1]);
-        gaugesRow.addView(miniGaugeBlock("الأسبوع", weekPct));
-
-        // مخصص: عداد ثابت بنفس حساب customPlanCompletionRatio (من اليوم لمدة planDays)
-        float customPct = customPlanCompletionRatio();
-        gaugesRow.addView(miniGaugeBlock("مخصص", customPct));
-        box.addView(gaugesRow);
-        box.addView(space(dp(14)));
+        box.addView(space(dp(10)));
 
         int total = planner.totalMinutes();
         int done = planner.doneMinutes();
-        int pct = total > 0 ? (int) Math.round(100.0 * done / total) : 0;
+        int pct = total > 0 ? Math.max(0, Math.min(100, (int)Math.round(100.0 * done / total))) : 0;
 
-        LinearLayout summary = card();
-        summary.setOrientation(LinearLayout.VERTICAL);
-        TextView pctTv = new TextView(this);
-        pctTv.setText(pct + "%");
-        pctTv.setTextColor(ACCENT);
-        pctTv.setTextSize(36);
-        pctTv.setTypeface(Typeface.DEFAULT_BOLD);
-        pctTv.setGravity(Gravity.CENTER);
-        summary.addView(pctTv);
-        TextView pctLab = muted("نسبة الإنجاز الكلية");
-        pctLab.setGravity(Gravity.CENTER);
-        summary.addView(pctLab);
-        summary.addView(space(dp(8)));
-        planner.refreshRemainingFromSessions();
-        int newRem = planner.newRemainingMin();
-        int oldRem = planner.backlogRemainingMin();
-        int leftRem = newRem + oldRem;
-        summary.addView(statRow("إجمالي الدقائق", total + " د"));
-        summary.addView(statRow("مكتمل", done + " د"));
-        summary.addView(statRow("متبقي", leftRem + " د"));
-        summary.addView(statRow("جديدة متبقية", newRem + " د"));
-        summary.addView(statRow("قديمة (متراكم) متبقية", oldRem + " د"));
-        String status = pct >= 70 ? "متقدم ✓" : (pct >= 40 ? "في المسار" : "متأخر — ركّز على الجديد والعالي");
-        TextView st = new TextView(this);
-        st.setText(status);
-        st.setTextColor(pct >= 70 ? OK : (pct >= 40 ? WARN : DANGER));
-        st.setTextSize(14);
-        st.setTypeface(Typeface.DEFAULT_BOLD);
-        st.setPadding(0, dp(8), 0, 0);
-        summary.addView(st);
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        slp.bottomMargin = dp(16);
-        summary.setLayoutParams(slp);
-        box.addView(summary);
+        LinearLayout hero = card();
+        hero.setPadding(dp(18), dp(18), dp(18), dp(18));
+        hero.setGravity(Gravity.CENTER_VERTICAL);
+        hero.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
-        box.addView(sectionHeader("إنجازك لكل مادة"));
-        Map<String, int[]> bySub = planner.progressBySubject();
-        if (bySub.isEmpty()) {
-            box.addView(emptyState("مفيش بيانات بعد."));
-        } else {
-            for (Map.Entry<String, int[]> e : bySub.entrySet()) {
-                int d = e.getValue()[0];
-                int tot = e.getValue()[1];
-                int p = tot > 0 ? (int) Math.round(100.0 * d / tot) : 0;
-                LinearLayout row = card();
-                row.setOrientation(LinearLayout.VERTICAL);
-                TextView sn = new TextView(this);
-                sn.setText(e.getKey());
-                sn.setTextColor(TEXT);
-                sn.setTextSize(14);
-                sn.setTypeface(Typeface.DEFAULT_BOLD);
-                row.addView(sn);
-                row.addView(muted(d + " / " + tot + " د  ·  " + p + "%"));
-                ProgressBar pb = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-                pb.setMax(100);
-                pb.setProgress(p);
-                pb.setPadding(0, dp(6), 0, 0);
-                row.addView(pb);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                lp.bottomMargin = dp(10);
-                row.setLayoutParams(lp);
-                box.addView(row);
+        ProgressHeroGauge gauge = new ProgressHeroGauge(this);
+        gauge.setProgress(pct);
+        hero.addView(gauge, new LinearLayout.LayoutParams(dp(128), dp(128)));
+
+        LinearLayout heroText = new LinearLayout(this);
+        heroText.setOrientation(LinearLayout.VERTICAL);
+        heroText.setGravity(Gravity.CENTER_VERTICAL);
+        heroText.setPadding(dp(14), 0, dp(8), 0);
+        TextView message = new TextView(this);
+        message.setText(progressMessage(pct));
+        message.setTextColor(TEXT);
+        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        message.setTypeface(Typeface.DEFAULT_BOLD);
+        message.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        message.setLineSpacing(dp(2), 1.08f);
+        heroText.addView(message);
+        TextView sub = new TextView(this);
+        sub.setText("نسبة الإنجاز الكلية");
+        sub.setTextColor(ACCENT);
+        sub.setTextSize(13);
+        sub.setTypeface(Typeface.DEFAULT_BOLD);
+        sub.setPadding(0, dp(8), 0, 0);
+        heroText.addView(sub);
+        hero.addView(heroText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        box.addView(hero);
+
+        box.addView(space(dp(12)));
+        LinearLayout metrics = new LinearLayout(this);
+        metrics.setOrientation(LinearLayout.HORIZONTAL);
+        metrics.setGravity(Gravity.CENTER);
+        metrics.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        int studyHours = Math.max(0, planner.doneMinutes()) / 60;
+        int completed = 0, remaining = 0;
+        for (Planner.Session ss : planner.sessions) {
+            if (ss == null) continue;
+            if (ss.done) completed++; else remaining++;
+        }
+        metrics.addView(statMetricCard("ساعات\nالمذاكرة", String.valueOf(studyHours)));
+        metrics.addView(space(dp(8)));
+        metrics.addView(statMetricCard("المهام\nالمكتملة", String.valueOf(completed)));
+        metrics.addView(space(dp(8)));
+        metrics.addView(statMetricCard("المهام\nالمتبقية", String.valueOf(remaining)));
+        box.addView(metrics);
+
+        box.addView(space(dp(14)));
+        LinearLayout chartCard = card();
+        TextView chartTitle = new TextView(this);
+        chartTitle.setText("الإنجاز خلال آخر 7 أيام");
+        chartTitle.setTextColor(TEXT);
+        chartTitle.setTextSize(17);
+        chartTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        chartTitle.setGravity(Gravity.RIGHT);
+        chartCard.addView(chartTitle);
+        chartCard.addView(space(dp(12)));
+        SevenDayProgressChart chart = new SevenDayProgressChart(this);
+        chart.setDays(lastSevenDayProgress());
+        chartCard.addView(chart, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(190)));
+        box.addView(chartCard);
+        return sc;
+    }
+
+    private String progressMessage(int pct) {
+        if (pct >= 100) return "ممتاز! أنجزت كل المطلوب.";
+        if (pct >= 90) return "مستوى ممتاز جدًا — باقي القليل.";
+        if (pct >= 80) return "أداء قوي — أنت قريب من الإتمام.";
+        if (pct >= 70) return "أداء ممتاز — استمر بنفس الثبات.";
+        if (pct >= 60) return "أنت ماشي كويس — كمّل بنفس الوتيرة.";
+        if (pct >= 50) return "نص الطريق تقريبًا — ثبّت تركيزك.";
+        if (pct >= 40) return "تقدّم واضح — زوّد خطوة كل يوم.";
+        if (pct >= 30) return "بدأت تبني تقدّم كويس — استمر.";
+        if (pct >= 20) return "فيه تقدّم — خلّي الاستمرارية هدفك.";
+        return "ابدأ بخطوة صغيرة وثبّت روتينك.";
+    }
+
+    private View statMetricCard(String labelText, String value) {
+        LinearLayout c = card();
+        c.setGravity(Gravity.CENTER);
+        c.setPadding(dp(8), dp(10), dp(8), dp(10));
+        c.setLayoutParams(new LinearLayout.LayoutParams(0, dp(92), 1f));
+        TextView v = new TextView(this);
+        v.setText(value);
+        v.setTextColor(ACCENT);
+        v.setTextSize(25);
+        v.setTypeface(Typeface.DEFAULT_BOLD);
+        v.setGravity(Gravity.CENTER);
+        c.addView(v);
+        TextView l = new TextView(this);
+        l.setText(labelText);
+        l.setTextColor(TEXT);
+        l.setTextSize(12);
+        l.setGravity(Gravity.CENTER);
+        c.addView(l);
+        return c;
+    }
+
+    private int[] lastSevenDayProgress() {
+        int[] values = new int[7];
+        Calendar base = Calendar.getInstance();
+        base.set(Calendar.HOUR_OF_DAY, 0);
+        base.set(Calendar.MINUTE, 0);
+        base.set(Calendar.SECOND, 0);
+        base.set(Calendar.MILLISECOND, 0);
+        for (int i = 6; i >= 0; i--) {
+            Calendar d = (Calendar)base.clone();
+            d.add(Calendar.DAY_OF_MONTH, -i);
+            String day = Planner.DAY.format(d.getTime());
+            int total = 0, done = 0;
+            for (Planner.Session ss : planner.sessions) {
+                if (ss == null || ss.day == null || !day.equals(ss.day)) continue;
+                total++;
+                if (ss.done) done++;
+            }
+            values[6-i] = total == 0 ? 0 : Math.max(0, Math.min(100, Math.round(done * 100f / total)));
+        }
+        return values;
+    }
+
+    private static class ProgressHeroGauge extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF rect = new RectF();
+        private int percent;
+        ProgressHeroGauge(android.content.Context c) { super(c); }
+        void setProgress(int v) { percent = Math.max(0, Math.min(100, v)); invalidate(); }
+        @Override protected void onDraw(Canvas canvas) {
+            float cx=getWidth()/2f, cy=getHeight()/2f, r=Math.min(getWidth(),getHeight())*.38f;
+            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(dp(getContext(),12)); p.setStrokeCap(Paint.Cap.ROUND);
+            rect.set(cx-r,cy-r,cx+r,cy+r); p.setColor(0x223E5BFF); p.setShader(null);
+            canvas.drawArc(rect,-90,360,false,p);
+            p.setShader(new SweepGradient(cx,cy,new int[]{0xFFE25563,0xFFE6B84D,0xFF45C98A},new float[]{0f,.5f,1f}));
+            canvas.drawArc(rect,-90,Math.max(1f,percent*3.6f),false,p); p.setShader(null);
+            p.setStyle(Paint.Style.FILL); p.setColor(TEXT); p.setTypeface(Typeface.DEFAULT_BOLD); p.setTextAlign(Paint.Align.CENTER);
+            p.setTextSize(dp(getContext(),25)); Paint.FontMetrics fm=p.getFontMetrics();
+            canvas.drawText(percent+"%",cx,cy-(fm.ascent+fm.descent)/2f,p);
+        }
+        private static float dp(android.content.Context c,float v){return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,v,c.getResources().getDisplayMetrics());}
+    }
+
+    private static class SevenDayProgressChart extends View {
+        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
+        private int[] values=new int[7];
+        private final String[] names={"س","ح","ن","ث","ر","خ","ج"};
+        SevenDayProgressChart(android.content.Context c){super(c);}
+        void setDays(int[] v){if(v!=null&&v.length==7)values=v.clone();invalidate();}
+        @Override protected void onDraw(Canvas canvas){
+            float w=getWidth(),h=getHeight(),left=dp(getContext(),8),right=w-left,top=dp(getContext(),6),bottom=h-dp(getContext(),28);
+            float gap=dp(getContext(),8),barW=(right-left-gap*6)/7f,sg=dp(getContext(),2),sh=(bottom-top-sg*9)/10f;
+            for(int d=0;d<7;d++){
+                float x=left+d*(barW+gap); int completed=Math.round(values[d]/10f);
+                for(int seg=0;seg<10;seg++){
+                    float y=bottom-(seg+1)*sh-seg*sg; p.setStyle(Paint.Style.FILL);
+                    p.setColor(seg<completed?ACCENT:0x224B6DFF);
+                    canvas.drawRoundRect(x,y,x+barW,y+sh,dp(getContext(),3),dp(getContext(),3),p);
+                }
+                p.setColor(TEXT);p.setTextSize(dp(getContext(),11));p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText(names[d],x+barW/2f,h-dp(getContext(),8),p);
             }
         }
-        return sc;
+        private static float dp(android.content.Context c,float v){return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,v,c.getResources().getDisplayMetrics());}
     }
 
     private View statRow(String k, String v) {
@@ -4984,255 +5067,87 @@ public class MainActivity extends Activity {
     }
 
     private View buildExamsScreen() {
-        ScrollView sc = new ScrollView(this);
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18), dp(18), dp(18), dp(28));
-        sc.addView(box);
-        box.addView(title("الامتحانات"));
-        box.addView(muted("الامتحان مش مجرد موعد؛ بيغيّر أولوية المادة مؤقتًا."));
-        box.addView(space(dp(10)));
-        Button add = primaryBtn("إضافة امتحان");
-        add.setOnClickListener(v -> showExamDialog(null));
-        box.addView(add, fullBtnLp());
-        box.addView(space(dp(12)));
-        if (planner.exams.isEmpty()) {
-            box.addView(emptyState("لا توجد امتحانات مضافة.\nضيف امتحان عشان الخطة تراعيه."));
-            return sc;
+        ScrollView sc=new ScrollView(this); sc.setFillViewport(true);
+        LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(18),dp(18),dp(18),dp(28)); box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL); sc.addView(box);
+        box.addView(title("الامتحانات")); box.addView(muted("الامتحان مش مجرد موعد؛ بيغيّر أولوية المادة مؤقتًا.")); box.addView(space(dp(10)));
+        Button add=primaryBtn("إضافة امتحان"); add.setOnClickListener(v->showExamDialog(null)); box.addView(add,fullBtnLp()); box.addView(space(dp(12)));
+        if(planner.exams.isEmpty()){box.addView(emptyState("لا توجد امتحانات مضافة.\nضيف امتحان عشان الخطة تراعيه."));return sc;}
+        Calendar today=Calendar.getInstance(); today.set(Calendar.HOUR_OF_DAY,0);today.set(Calendar.MINUTE,0);today.set(Calendar.SECOND,0);today.set(Calendar.MILLISECOND,0);
+        for(Planner.Exam e:planner.exams){
+            LinearLayout card=card(); card.setPadding(dp(12),dp(12),dp(14),dp(12)); card.setLayoutDirection(View.LAYOUT_DIRECTION_LTR); card.setGravity(Gravity.CENTER_VERTICAL);
+            int days=999; try{Calendar c=Planner.dayCal(e.day);days=(int)((c.getTimeInMillis()-today.getTimeInMillis())/86400000L);}catch(Exception ignored){}
+            TextView countdown=new TextView(this); countdown.setText(days<0?"عدّى":(days==0?"النهاردة":"بعد "+days+" يوم")); countdown.setTextColor(days<0?MUTED:ACCENT); countdown.setTextSize(14); countdown.setTypeface(Typeface.DEFAULT_BOLD); countdown.setGravity(Gravity.CENTER); countdown.setSingleLine(true);
+            card.addView(countdown,new LinearLayout.LayoutParams(dp(92),dp(70))); card.addView(new Space(this),new LinearLayout.LayoutParams(0,1,1f));
+            LinearLayout info=new LinearLayout(this); info.setOrientation(LinearLayout.HORIZONTAL); info.setGravity(Gravity.CENTER_VERTICAL); info.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+            SubjectIconView icon=new SubjectIconView(this); icon.setSubject(e.subject); info.addView(icon,new LinearLayout.LayoutParams(dp(46),dp(46)));
+            LinearLayout names=new LinearLayout(this); names.setOrientation(LinearLayout.VERTICAL); names.setGravity(Gravity.CENTER_VERTICAL|Gravity.RIGHT); names.setPadding(dp(10),0,0,0); names.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+            TextView subjectName=new TextView(this); subjectName.setText(e.subject==null?"":e.subject); subjectName.setTextColor(e.done?OK:ACCENT); subjectName.setTextSize(17); subjectName.setTypeface(Typeface.DEFAULT_BOLD); subjectName.setGravity(Gravity.RIGHT);
+            TextView examName=new TextView(this); examName.setText((e.title==null||e.title.isEmpty())?"امتحان":e.title); examName.setTextColor(TEXT); examName.setTextSize(16); examName.setTypeface(Typeface.DEFAULT_BOLD); examName.setGravity(Gravity.RIGHT); examName.setMaxLines(2);
+            names.addView(subjectName);names.addView(space(dp(3)));names.addView(examName);info.addView(names,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+            card.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);lp.bottomMargin=dp(10);card.setLayoutParams(lp);
+            card.setOnClickListener(v->showExamDialog(e)); box.addView(card);
         }
-        Calendar today = Calendar.getInstance();
-        today.set(Calendar.HOUR_OF_DAY, 0);
-        today.set(Calendar.MINUTE, 0);
-        today.set(Calendar.SECOND, 0);
-        today.set(Calendar.MILLISECOND, 0);
-        for (Planner.Exam e : planner.exams) {
-            LinearLayout card = card();
-            card.setOrientation(LinearLayout.VERTICAL);
-            TextView name = new TextView(this);
-            name.setText((e.title == null || e.title.isEmpty()) ? e.subject : e.title);
-            name.setTextColor(e.done ? OK : TEXT);
-            name.setTextSize(16);
-            name.setTypeface(Typeface.DEFAULT_BOLD);
-            card.addView(name);
-            int days = 999;
-            try {
-                Calendar c = Planner.dayCal(e.day);
-                days = (int) ((c.getTimeInMillis() - today.getTimeInMillis()) / 86400000L);
-            } catch (Exception ignored) {}
-            String when = days < 0 ? "عدّى" : (days == 0 ? "النهاردة" : "بعد " + days + " يوم");
-            card.addView(muted(e.subject + "  ·  " + when));
-            card.addView(muted("التحضير: " + e.prepLevel + "%   " + (e.topics == null ? "" : e.topics)));
-            if (!e.done && days >= 0 && days <= 7) {
-                card.addView(space(dp(4)));
-                card.addView(muted("هيأثر على الجدول كأولوية مؤقتة لـ" + e.subject));
-            }
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, dp(8), 0, 0);
-            TextView ed = link("تعديل");
-            ed.setOnClickListener(v -> showExamDialog(e));
-            row.addView(ed);
-            row.addView(space(dp(12)));
-            TextView del = link("حذف");
-            del.setTextColor(DANGER);
-            del.setOnClickListener(v -> {
-                planner.exams.remove(e);
-                planner.save();
-                showTab(3);
-            });
-            row.addView(del);
-            card.addView(row);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = dp(10);
-            card.setLayoutParams(lp);
-            box.addView(card);
-        }
-
         return sc;
     }
 
     private void showExamDialog(Planner.Exam existing) {
-        LinearLayout form = new LinearLayout(this);
-        form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(dp(18), dp(12), dp(18), dp(10));
-        form.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-
-        final String[] subjectHold = {existing != null && existing.subject != null ? existing.subject : ""};
-        form.addView(label("المادة"));
-        TextView subject = chip(subjectHold[0].isEmpty() ? "اختار المادة ▾" : subjectHold[0], true);
-        form.addView(subject);
-
+        LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(18),dp(12),dp(18),dp(10));form.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        final String[] subjectHold={existing!=null&&existing.subject!=null?existing.subject:""};
+        TextView subjectLabel=label("المادة");subjectLabel.setTextColor(ACCENT);form.addView(subjectLabel);
+        TextView subject=chip(subjectHold[0].isEmpty()?"اختار مادة":subjectHold[0],true);subject.setTextColor(ACCENT);form.addView(subject);
         form.addView(space(dp(8)));
-        form.addView(label("اسم الامتحان"));
-        EditText title = field();
-        title.setHint("مثال: امتحان منتصف الترم");
-        if (existing != null && existing.title != null) title.setText(existing.title);
-        form.addView(title);
-
+        TextView titleLabel=label("اسم الامتحان");titleLabel.setTextColor(ACCENT);form.addView(titleLabel);
+        EditText title=field();title.setTextColor(ACCENT);title.setHintTextColor(0xAA4B6DFF);title.setHint("اسم الامتحان");if(existing!=null&&existing.title!=null)title.setText(existing.title);form.addView(title);
         form.addView(space(dp(8)));
-        form.addView(label("تاريخ الامتحان"));
-        final String[] day = {existing != null && existing.day != null ? existing.day : ""};
-        TextView dayTv = chip(day[0].isEmpty() ? "اختار التاريخ ▾" : day[0], true);
-        dayTv.setOnClickListener(v -> {
-            Calendar cal = Calendar.getInstance();
-            new DatePickerDialog(this, (vv, y, m, d) -> {
-                day[0] = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d);
-                dayTv.setText(day[0]);
-            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show();
-        });
-        form.addView(dayTv);
+        TextView dateLabel=label("تاريخ الامتحان");dateLabel.setTextColor(ACCENT);form.addView(dateLabel);
+        final String[] day={existing!=null&&existing.day!=null?existing.day:""};
+        TextView dayTv=chip(day[0].isEmpty()?"اختار التاريخ":day[0],true);dayTv.setTextColor(ACCENT);
+        dayTv.setOnClickListener(v->{Calendar cal=Calendar.getInstance();DatePickerDialog dpd=new DatePickerDialog(this,(vv,y,m,d)->{day[0]=String.format(Locale.US,"%04d-%02d-%02d",y,m+1,d);dayTv.setText(day[0]);dayTv.setTextColor(ACCENT);},cal.get(Calendar.YEAR),cal.get(Calendar.MONTH),cal.get(Calendar.DAY_OF_MONTH));dpd.setOnShowListener(x->styleBlueDialog(dpd));dpd.show();});form.addView(dayTv);
+        form.addView(space(dp(12)));TextView moreToggle=link("خيارات إضافية ▾");moreToggle.setTextColor(ACCENT);form.addView(moreToggle);
+        LinearLayout moreBox=new LinearLayout(this);moreBox.setOrientation(LinearLayout.VERTICAL);moreBox.setVisibility(View.GONE);moreBox.setPadding(0,dp(8),0,0);
+        TextView topicsLabel=label("الفصول أو الأجزاء");topicsLabel.setTextColor(ACCENT);moreBox.addView(topicsLabel);
+        EditText topics=field();topics.setTextColor(ACCENT);topics.setHintTextColor(0xAA4B6DFF);topics.setHint("اختياري");if(existing!=null&&existing.topics!=null)topics.setText(existing.topics);moreBox.addView(topics);
+        moreBox.addView(space(dp(8)));final int[] prep={existing!=null?existing.prepLevel:40};TextView prepTv=new TextView(this);prepTv.setText("مستوى التحضير: "+prep[0]+"%");prepTv.setTextColor(ACCENT);prepTv.setTextSize(12);SeekBar prepBar=new SeekBar(this);prepBar.setMax(100);prepBar.setProgress(prep[0]);prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){prep[0]=p;prepTv.setText("مستوى التحضير: "+p+"%");}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});moreBox.addView(prepTv);moreBox.addView(prepBar);
+        moreBox.addView(space(dp(8)));TextView lastLabel=label("آخر محاضرة داخلة في الامتحان");lastLabel.setTextColor(ACCENT);moreBox.addView(lastLabel);TextView lastHint=muted("مثال: محاضرة 7 → الامتحان يشمل 1…7.");lastHint.setTextColor(0xAA4B6DFF);moreBox.addView(lastHint);
+        final String[] lastLecId={existing!=null&&existing.lastLectureTaskId!=null?existing.lastLectureTaskId:""};String lastLecLabel="بدون تحديد";if(!lastLecId[0].isEmpty()){Planner.Task lt=planner.findTask(lastLecId[0]);if(lt!=null){int n=Planner.lectureNumber(lt);lastLecLabel=(n>=0?("محاضرة "+n+" — "):"")+(lt.name==null?"?":lt.name);}}
+        TextView lastLecTv=chip(lastLecLabel,true);lastLecTv.setTextColor(ACCENT);
+        lastLecTv.setOnClickListener(v->{String sub=subjectHold[0]==null?"":subjectHold[0].trim();if(sub.isEmpty()){Toast.makeText(this,"اختار المادة أولًا",Toast.LENGTH_SHORT).show();return;}java.util.ArrayList<Planner.Task> lecs=new java.util.ArrayList<>();for(Planner.Task tk:planner.tasks)if(tk.subject!=null&&tk.subject.equals(sub))lecs.add(tk);lecs.sort((a,b)->Integer.compare(Planner.lectureNumber(a),Planner.lectureNumber(b)));String[] labels=new String[lecs.size()+1];labels[0]="بدون تحديد";for(int i=0;i<lecs.size();i++){Planner.Task tk=lecs.get(i);int n=Planner.lectureNumber(tk);labels[i+1]=(n>=0?("محاضرة "+n+" — "):"")+(tk.name==null?"?":tk.name)+(tk.done?" ✓":"");}AlertDialog ld=myDialog().setTitle("آخر محاضرة — "+sub).setItems(labels,(dd,w)->{if(w==0){lastLecId[0]="";lastLecTv.setText("بدون تحديد");}else{Planner.Task tk=lecs.get(w-1);lastLecId[0]=tk.id;int n=Planner.lectureNumber(tk);lastLecTv.setText((n>=0?("محاضرة "+n+" — "):"")+(tk.name==null?"?":tk.name));}lastLecTv.setTextColor(ACCENT);}).show();styleBlueDialog(ld);});
+        moreBox.addView(lastLecTv);form.addView(moreBox);
+        final boolean[] moreOpen={false};moreToggle.setOnClickListener(v->{moreOpen[0]=!moreOpen[0];moreBox.setVisibility(moreOpen[0]?View.VISIBLE:View.GONE);moreToggle.setText(moreOpen[0]?"خيارات إضافية ▴":"خيارات إضافية ▾");});
+        subject.setOnClickListener(v->pickSubject(subjectHold[0],name0->{if(!name0.equals(subjectHold[0])){lastLecId[0]="";lastLecTv.setText("بدون تحديد");}subjectHold[0]=name0;subject.setText(name0);subject.setTextColor(ACCENT);}));
+        ScrollView sv=new ScrollView(this);sv.addView(form);
+        AlertDialog dialog=myDialog().setTitle(existing==null?"امتحان جديد":"تعديل امتحان").setView(sv).setPositiveButton("حفظ",(d,w)->{String sub=subjectHold[0]==null?"":subjectHold[0].trim();if(sub.isEmpty()){Toast.makeText(this,"اختار المادة",Toast.LENGTH_SHORT).show();return;}if(day[0].isEmpty()){Toast.makeText(this,"اختار التاريخ",Toast.LENGTH_SHORT).show();return;}Planner.Exam e=existing!=null?existing:new Planner.Exam();e.subject=sub;e.title=title.getText().toString().trim();e.topics=topics.getText().toString().trim();e.day=day[0];e.prepLevel=prep[0];e.importance=2;e.lastLectureTaskId=lastLecId[0]==null?"":lastLecId[0];if(existing==null)planner.exams.add(e);planner.save();showTab(3);}).setNegativeButton("إلغاء",null).show();styleBlueDialog(dialog);
+    }
 
-        final int[] imp = {2}; // ثابت — لا أولوية للامتحان في الواجهة
+    private void styleBlueDialog(AlertDialog dialog) {
+        if(dialog==null)return;
+        try{
+            TextView titleView=dialog.findViewById(android.R.id.alertTitle);if(titleView!=null)titleView.setTextColor(ACCENT);
+            TextView messageView=dialog.findViewById(android.R.id.message);if(messageView!=null)messageView.setTextColor(ACCENT);
+            Button pos=dialog.getButton(AlertDialog.BUTTON_POSITIVE),neg=dialog.getButton(AlertDialog.BUTTON_NEGATIVE),neu=dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+            if(pos!=null)pos.setTextColor(ACCENT);if(neg!=null)neg.setTextColor(ACCENT);if(neu!=null)neu.setTextColor(ACCENT);
+            View root=dialog.getWindow()==null?null:dialog.getWindow().getDecorView();if(root!=null)colorDialogText(root);
+        }catch(Exception ignored){}
+    }
 
-        // خيارات إضافية
-        form.addView(space(dp(12)));
-        TextView moreToggle = link("خيارات إضافية ▾");
-        form.addView(moreToggle);
-        LinearLayout moreBox = new LinearLayout(this);
-        moreBox.setOrientation(LinearLayout.VERTICAL);
-        moreBox.setVisibility(View.GONE);
-        moreBox.setPadding(0, dp(8), 0, 0);
-
-        moreBox.addView(label("الفصول / الأجزاء"));
-        EditText topics = field();
-        topics.setHint("اختياري");
-        if (existing != null && existing.topics != null) topics.setText(existing.topics);
-        moreBox.addView(topics);
-
-        moreBox.addView(space(dp(8)));
-        final int[] prep = {existing != null ? existing.prepLevel : 40};
-        TextView prepTv = muted("مستوى التحضير: " + prep[0] + "%");
-        SeekBar prepBar = new SeekBar(this);
-        prepBar.setMax(100);
-        prepBar.setProgress(prep[0]);
-        prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                prep[0] = progress;
-                prepTv.setText("مستوى التحضير: " + progress + "%");
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-        moreBox.addView(prepTv);
-        moreBox.addView(prepBar);
-
-        moreBox.addView(space(dp(8)));
-        moreBox.addView(label("آخر محاضرة داخلة في الامتحان"));
-        moreBox.addView(muted("مثال: محاضرة 7 → الامتحان يشمل 1…7."));
-        final String[] lastLecId = {existing != null && existing.lastLectureTaskId != null ? existing.lastLectureTaskId : ""};
-        String lastLecLabel = "بدون تحديد ▾";
-        if (!lastLecId[0].isEmpty()) {
-            Planner.Task lt = planner.findTask(lastLecId[0]);
-            if (lt != null) {
-                int n = Planner.lectureNumber(lt);
-                lastLecLabel = (n >= 0 ? ("محاضرة " + n + " — ") : "") + (lt.name == null ? "?" : lt.name);
-            }
-        }
-        TextView lastLecTv = chip(lastLecLabel, true);
-        lastLecTv.setOnClickListener(v -> {
-            String sub = subjectHold[0] == null ? "" : subjectHold[0].trim();
-            if (sub.isEmpty()) {
-                Toast.makeText(this, "اختار المادة أولًا", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            java.util.ArrayList<Planner.Task> lecs = new java.util.ArrayList<>();
-            for (Planner.Task tk : planner.tasks) {
-                if (tk.subject != null && tk.subject.equals(sub)) lecs.add(tk);
-            }
-            lecs.sort((a, b) -> Integer.compare(Planner.lectureNumber(a), Planner.lectureNumber(b)));
-            String[] labels = new String[lecs.size() + 1];
-            labels[0] = "بدون تحديد";
-            for (int i = 0; i < lecs.size(); i++) {
-                Planner.Task tk = lecs.get(i);
-                int n = Planner.lectureNumber(tk);
-                labels[i + 1] = (n >= 0 ? ("محاضرة " + n + " — ") : "") + (tk.name == null ? "?" : tk.name) + (tk.done ? " ✓" : "");
-            }
-            myDialog().setTitle("آخر محاضرة — " + sub)
-                    .setItems(labels, (dd, w) -> {
-                        if (w == 0) {
-                            lastLecId[0] = "";
-                            lastLecTv.setText("بدون تحديد ▾");
-                        } else {
-                            Planner.Task tk = lecs.get(w - 1);
-                            lastLecId[0] = tk.id;
-                            int n = Planner.lectureNumber(tk);
-                            lastLecTv.setText((n >= 0 ? ("محاضرة " + n + " — ") : "") + (tk.name == null ? "?" : tk.name));
-                        }
-                    }).show();
-        });
-        moreBox.addView(lastLecTv);
-        form.addView(moreBox);
-
-        final boolean[] moreOpen = {false};
-        moreToggle.setOnClickListener(v -> {
-            moreOpen[0] = !moreOpen[0];
-            moreBox.setVisibility(moreOpen[0] ? View.VISIBLE : View.GONE);
-            moreToggle.setText(moreOpen[0] ? "خيارات إضافية ▴" : "خيارات إضافية ▾");
-        });
-
-        subject.setOnClickListener(v -> pickSubject(subjectHold[0], name0 -> {
-            if (!name0.equals(subjectHold[0])) {
-                lastLecId[0] = "";
-                lastLecTv.setText("بدون تحديد ▾");
-            }
-            subjectHold[0] = name0;
-            subject.setText(name0);
-        }));
-
-        ScrollView sv = new ScrollView(this);
-        sv.addView(form);
-        myDialog()
-                .setTitle(existing == null ? "امتحان جديد" : "تعديل امتحان")
-                .setView(sv)
-                .setPositiveButton("حفظ", (d, w) -> {
-                    String sub = subjectHold[0] == null ? "" : subjectHold[0].trim();
-                    if (sub.isEmpty()) {
-                        Toast.makeText(this, "اختار المادة", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (day[0].isEmpty()) {
-                        Toast.makeText(this, "اختار التاريخ", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    Planner.Exam e = existing != null ? existing : new Planner.Exam();
-                    e.subject = sub;
-                    e.title = title.getText().toString().trim();
-                    e.topics = topics.getText().toString().trim();
-                    e.day = day[0];
-                    e.prepLevel = prep[0];
-                    e.importance = 2; // لا أولوية للامتحان
-                    e.lastLectureTaskId = lastLecId[0] == null ? "" : lastLecId[0];
-                    if (existing == null) planner.exams.add(e);
-                    planner.save();
-                    showTab(3);
-                })
-                .setNegativeButton("إلغاء", null)
-                .show();
+    private void colorDialogText(View v) {
+        if(v instanceof EditText){((EditText)v).setTextColor(ACCENT);((EditText)v).setHintTextColor(0xAA4B6DFF);}
+        else if(v instanceof TextView)((TextView)v).setTextColor(ACCENT);
+        if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++)colorDialogText(g.getChildAt(i));}
     }
 
     interface NameTap { void apply(String name); }
     interface IntPick { void pick(int index); }
 
     private void pickSubject(String current, NameTap cb) {
-        java.util.List<String> names = new java.util.ArrayList<>();
-        for (Planner.Subject s : planner.subjects) names.add(s.name);
-        names.add("+ مادة جديدة");
-        myDialog()
-                .setTitle("المادة")
-                .setItems(names.toArray(new String[0]), (d, w) -> {
-                    if (w == names.size() - 1) {
-                        EditText et = field();
-                        et.setHint("اسم المادة");
-                        myDialog().setTitle("مادة جديدة").setView(pad(et))
-                                .setPositiveButton("إضافة", (dd, ww) -> {
-                                    String n = et.getText().toString().trim();
-                                    if (n.isEmpty()) return;
-                                    planner.addSubject(n);
-                                    cb.apply(n);
-                                }).setNegativeButton("إلغاء", null).show();
-                    } else cb.apply(names.get(w));
-                }).show();
+        java.util.List<String> names=new java.util.ArrayList<>();for(Planner.Subject ss:planner.subjects)names.add(ss.name);names.add("+ مادة جديدة");
+        AlertDialog dialog=myDialog().setTitle("المادة").setItems(names.toArray(new String[0]),(d,w)->{
+            if(w==names.size()-1){
+                EditText et=field();et.setTextColor(ACCENT);et.setHintTextColor(0xAA4B6DFF);et.setHint("اسم المادة");
+                AlertDialog add=myDialog().setTitle("مادة جديدة").setView(pad(et)).setPositiveButton("إضافة",(dd,ww)->{String n=et.getText().toString().trim();if(n.isEmpty())return;planner.addSubject(n);cb.apply(n);}).setNegativeButton("إلغاء",null).show();styleBlueDialog(add);
+            }else cb.apply(names.get(w));
+        }).show();styleBlueDialog(dialog);
     }
 
 
@@ -5352,6 +5267,23 @@ public class MainActivity extends Activity {
                 })
                 .setNegativeButton("إلغاء", null)
                 .show();
+    }
+
+    private static class SubjectIconView extends View {
+        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG); private String subject="";
+        SubjectIconView(android.content.Context c){super(c);}
+        void setSubject(String s){subject=s==null?"":s;invalidate();}
+        @Override protected void onDraw(Canvas canvas){
+            float w=getWidth(),h=getHeight(),cx=w/2f,cy=h/2f,stroke=Math.max(2f,w*.055f);
+            p.setColor(ACCENT);p.setStrokeWidth(stroke);p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeJoin(Paint.Join.ROUND);
+            String s=subject.toLowerCase(Locale.ROOT);p.setTextAlign(Paint.Align.CENTER);
+            if(s.contains("عرب")||s.equals("arabic")){p.setStyle(Paint.Style.FILL);p.setTypeface(Typeface.create(Typeface.SERIF,Typeface.BOLD_ITALIC));p.setTextSize(w*.62f);canvas.drawText("ع",cx,cy+w*.22f,p);}
+            else if(s.contains("english")||s.contains("إنج")||s.contains("انج")){p.setStyle(Paint.Style.FILL);p.setTypeface(Typeface.create(Typeface.SANS_SERIF,Typeface.BOLD));p.setTextSize(w*.42f);canvas.drawText("Aa",cx,cy+w*.15f,p);}
+            else if(s.contains("كيم")||s.contains("chem")){p.setStyle(Paint.Style.STROKE);Path path=new Path();path.moveTo(cx-w*.18f,cy-w*.22f);path.lineTo(cx-w*.12f,cy-w*.02f);path.lineTo(cx-w*.30f,cy+w*.27f);path.quadTo(cx,cy+w*.45f,cx+w*.30f,cy+w*.27f);path.lineTo(cx+w*.12f,cy-w*.02f);path.lineTo(cx+w*.18f,cy-w*.22f);canvas.drawPath(path,p);canvas.drawLine(cx-w*.20f,cy-w*.22f,cx+w*.20f,cy-w*.22f,p);}
+            else if(s.contains("أحيا")||s.contains("احيا")||s.contains("bio")){p.setStyle(Paint.Style.STROKE);canvas.drawOval(new RectF(cx-w*.30f,cy-w*.30f,cx+w*.30f,cy+w*.30f),p);canvas.drawOval(new RectF(cx-w*.18f,cy-w*.14f,cx+w*.18f,cy+w*.14f),p);p.setStyle(Paint.Style.FILL);canvas.drawCircle(cx+w*.08f,cy-w*.04f,w*.07f,p);canvas.drawCircle(cx-w*.10f,cy+w*.10f,w*.045f,p);}
+            else if(s.contains("فيز")||s.contains("phys")){p.setStyle(Paint.Style.STROKE);canvas.drawLine(cx,cy-w*.34f,cx,cy+w*.06f,p);canvas.drawCircle(cx,cy+w*.12f,w*.075f,p);p.setStyle(Paint.Style.FILL);canvas.drawCircle(cx,cy+w*.22f,w*.10f,p);}
+            else{p.setStyle(Paint.Style.FILL);p.setTypeface(Typeface.create(Typeface.SERIF,Typeface.BOLD_ITALIC));p.setTextSize(w*.68f);canvas.drawText("π",cx,cy+w*.23f,p);}
+        }
     }
 
     private View subjectsCard() {
