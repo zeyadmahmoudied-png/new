@@ -4121,72 +4121,104 @@ public class MainActivity extends Activity {
 
     private View buildStatsScreen() {
         ScrollView sc = new ScrollView(this);
+        sc.setFillViewport(true);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         box.setPadding(dp(18), dp(18), dp(18), dp(28));
         sc.addView(box);
 
         box.addView(title("الإحصائيات"));
-
-        // ثلاثة عدادات فعلية: اليوم · الأسبوع · مخصص (إن وُجد)
-        LinearLayout gaugesRow = new LinearLayout(this);
-        gaugesRow.setOrientation(LinearLayout.HORIZONTAL);
-        gaugesRow.setGravity(Gravity.CENTER);
-        gaugesRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-
-        float todayPct = sessionCompletionRatio(Planner.todayStr(), Planner.todayStr());
-        gaugesRow.addView(miniGaugeBlock("اليوم", todayPct));
-
-        // أسبوع My Plan: السبت → الجمعة حول اليوم الحالي
-        String[] weekRange = currentWeekRangeInclusive();
-        float weekPct = sessionCompletionRatio(weekRange[0], weekRange[1]);
-        gaugesRow.addView(miniGaugeBlock("الأسبوع", weekPct));
-
-        // مخصص: عداد ثابت بنفس حساب customPlanCompletionRatio (من اليوم لمدة planDays)
-        float customPct = customPlanCompletionRatio();
-        gaugesRow.addView(miniGaugeBlock("مخصص", customPct));
-        box.addView(gaugesRow);
-        box.addView(space(dp(14)));
+        box.addView(muted("نظرة سريعة على إنجازك الدراسي."));
+        box.addView(space(dp(12)));
 
         int total = planner.totalMinutes();
         int done = planner.doneMinutes();
-        int pct = total > 0 ? (int) Math.round(100.0 * done / total) : 0;
+        int pct = total > 0 ? Math.max(0, Math.min(100, (int)Math.round(100.0 * done / total))) : 0;
 
-        LinearLayout summary = card();
-        summary.setOrientation(LinearLayout.VERTICAL);
-        TextView pctTv = new TextView(this);
-        pctTv.setText(pct + "%");
-        pctTv.setTextColor(ACCENT);
-        pctTv.setTextSize(36);
-        pctTv.setTypeface(Typeface.DEFAULT_BOLD);
-        pctTv.setGravity(Gravity.CENTER);
-        summary.addView(pctTv);
-        TextView pctLab = muted("نسبة الإنجاز الكلية");
-        pctLab.setGravity(Gravity.CENTER);
-        summary.addView(pctLab);
-        summary.addView(space(dp(8)));
+        LinearLayout hero = card();
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setGravity(Gravity.CENTER);
+        hero.setPadding(dp(14), dp(18), dp(14), dp(18));
+
+        StatsGaugeView gauge = new StatsGaugeView(this);
+        gauge.setPercent(pct);
+        hero.addView(gauge, new LinearLayout.LayoutParams(-1, dp(190)));
+
+        TextView phrase = new TextView(this);
+        phrase.setText(statsPhrase(pct));
+        phrase.setTextColor(ACCENT);
+        phrase.setTextSize(16);
+        phrase.setTypeface(Typeface.DEFAULT_BOLD);
+        phrase.setGravity(Gravity.CENTER);
+        hero.addView(phrase);
+
         planner.refreshRemainingFromSessions();
-        int newRem = planner.newRemainingMin();
-        int oldRem = planner.backlogRemainingMin();
-        int leftRem = newRem + oldRem;
-        summary.addView(statRow("إجمالي الدقائق", total + " د"));
-        summary.addView(statRow("مكتمل", done + " د"));
-        summary.addView(statRow("متبقي", leftRem + " د"));
-        summary.addView(statRow("جديدة متبقية", newRem + " د"));
-        summary.addView(statRow("قديمة (متراكم) متبقية", oldRem + " د"));
-        String status = pct >= 70 ? "متقدم ✓" : (pct >= 40 ? "في المسار" : "متأخر — ركّز على الجديد والعالي");
-        TextView st = new TextView(this);
-        st.setText(status);
-        st.setTextColor(pct >= 70 ? OK : (pct >= 40 ? WARN : DANGER));
-        st.setTextSize(14);
-        st.setTypeface(Typeface.DEFAULT_BOLD);
-        st.setPadding(0, dp(8), 0, 0);
-        summary.addView(st);
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        slp.bottomMargin = dp(16);
-        summary.setLayoutParams(slp);
-        box.addView(summary);
+        int remainingTasks = 0;
+        for (Planner.Task t : planner.tasks) if (!t.done) remainingTasks++;
+        int studyHours = Math.max(0, done) / 60;
+
+        LinearLayout three = new LinearLayout(this);
+        three.setOrientation(LinearLayout.HORIZONTAL);
+        three.setGravity(Gravity.CENTER);
+        three.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        three.addView(statMetric("⏱", studyHours + " س", "ساعات المذاكرة"));
+        three.addView(statMetric("✓", String.valueOf(doneTasksCount()), "المهام المكتملة"));
+        three.addView(statMetric("○", String.valueOf(remainingTasks), "المهام المتبقية"));
+        hero.addView(space(dp(12)));
+        hero.addView(three, new LinearLayout.LayoutParams(-1, dp(72)));
+        box.addView(hero);
+        box.addView(space(dp(14)));
+
+        LinearLayout weekCard = card();
+        weekCard.setOrientation(LinearLayout.VERTICAL);
+        weekCard.addView(sectionHeader("الإنجاز خلال آخر 7 أيام"));
+        weekCard.addView(muted("مقارنة يومية لإنجاز الجلسات."));
+        weekCard.addView(space(dp(8)));
+
+        LinearLayout chart = new LinearLayout(this);
+        chart.setOrientation(LinearLayout.HORIZONTAL);
+        chart.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        chart.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        Calendar base = Calendar.getInstance();
+        base.set(Calendar.HOUR_OF_DAY, 0);
+        base.set(Calendar.MINUTE, 0);
+        base.set(Calendar.SECOND, 0);
+        base.set(Calendar.MILLISECOND, 0);
+
+        for (int i = 6; i >= 0; i--) {
+            Calendar d = (Calendar) base.clone();
+            d.add(Calendar.DAY_OF_YEAR, -i);
+            String ds = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(d.getTime());
+            float rp = sessionCompletionRatio(ds, ds);
+
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            TextView val = muted(Math.round(rp * 100f) + "%");
+            val.setTextSize(10);
+            val.setGravity(Gravity.CENTER);
+            col.addView(val);
+
+            View bar = new View(this);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(rp > 0 ? ACCENT : CARD2);
+            bg.setCornerRadius(dp(8));
+            bar.setBackground(bg);
+            col.addView(bar, new LinearLayout.LayoutParams(dp(18), dp(14) + Math.round(dp(72) * rp)));
+
+            TextView dn = muted(new SimpleDateFormat("EEE", new Locale("ar")).format(d.getTime()));
+            dn.setTextSize(10);
+            dn.setGravity(Gravity.CENTER);
+            col.addView(dn);
+
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, dp(118), 1f);
+            cp.setMargins(dp(3), 0, dp(3), 0);
+            chart.addView(col, cp);
+        }
+        weekCard.addView(chart);
+        box.addView(weekCard);
+        box.addView(space(dp(14)));
 
         box.addView(sectionHeader("إنجازك لكل مادة"));
         Map<String, int[]> bySub = planner.progressBySubject();
@@ -4196,23 +4228,30 @@ public class MainActivity extends Activity {
             for (Map.Entry<String, int[]> e : bySub.entrySet()) {
                 int d = e.getValue()[0];
                 int tot = e.getValue()[1];
-                int p = tot > 0 ? (int) Math.round(100.0 * d / tot) : 0;
+                int p = tot > 0 ? (int)Math.round(100.0 * d / tot) : 0;
                 LinearLayout row = card();
-                row.setOrientation(LinearLayout.VERTICAL);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                row.addView(subjectIcon(e.getKey()), new LinearLayout.LayoutParams(dp(42), dp(42)));
+                LinearLayout info = new LinearLayout(this);
+                info.setOrientation(LinearLayout.VERTICAL);
+                info.setPadding(dp(10), 0, 0, 0);
                 TextView sn = new TextView(this);
                 sn.setText(e.getKey());
                 sn.setTextColor(TEXT);
                 sn.setTextSize(14);
                 sn.setTypeface(Typeface.DEFAULT_BOLD);
-                row.addView(sn);
-                row.addView(muted(d + " / " + tot + " د  ·  " + p + "%"));
+                info.addView(sn);
+                info.addView(muted(d + " / " + tot + " د  ·  " + p + "%"));
                 ProgressBar pb = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
                 pb.setMax(100);
                 pb.setProgress(p);
-                pb.setPadding(0, dp(6), 0, 0);
-                row.addView(pb);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                pb.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+                pb.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(CARD2));
+                info.addView(pb, new LinearLayout.LayoutParams(0, dp(16), 1f));
+                row.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
                 lp.bottomMargin = dp(10);
                 row.setLayoutParams(lp);
                 box.addView(row);
@@ -4221,126 +4260,86 @@ public class MainActivity extends Activity {
         return sc;
     }
 
-    private View statRow(String k, String v) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(0, dp(4), 0, dp(4));
-        TextView left = muted(k);
-        TextView right = new TextView(this);
-        right.setText(v);
-        right.setTextColor(TEXT);
-        right.setTextSize(13);
-        right.setTypeface(Typeface.DEFAULT_BOLD);
-        row.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(right);
-        return row;
+    private int doneTasksCount() {
+        int n = 0;
+        for (Planner.Task t : planner.tasks) if (t.done) n++;
+        return n;
     }
 
-    // ═══════════════ Routine ═══════════════
-
-    private void showUserGuide() {
-        guideMode = 1;
-        guideTopic = -1;
-        showTab(4);
+    private String statsPhrase(int pct) {
+        if (pct < 10) return "🌱 لسه البداية";
+        if (pct < 20) return "💪 بدأنا نتحرك";
+        if (pct < 30) return "🔥 بداية حلوة";
+        if (pct < 40) return "👍 ماشي كويس";
+        if (pct < 50) return "🚀 بتتقدم";
+        if (pct < 60) return "⭐ نص الطريق";
+        if (pct < 70) return "💙 شغل ممتاز";
+        if (pct < 80) return "🔥 أداء رائع";
+        if (pct < 90) return "🏆 قربت تخلص";
+        return "🎯 إنجاز كامل!";
     }
 
-    private void openGuideTopic(int index) {
-        guideMode = 2;
-        guideTopic = index;
-        showTab(4);
-    }
-
-    private void closeUserGuide() {
-        guideMode = 0;
-        guideTopic = -1;
-        showTab(4);
-    }
-
-    private String[] guideSections() {
-        return new String[] {
-                "كيف يعمل الجدول؟",
-                "إنشاء خطتي",
-                "اليوم · الأسبوع · مخصص",
-                "طريقة التوزيع: كل يوم جزء من كل محاضرة",
-                "طريقة التوزيع: جلسات المحاضرة ورا بعض",
-                "طريقة التوزيع: محاضرة واحدة كل يوم",
-                "القيود التي يحترمها الجدول",
-                "الجلسات بعد إنشاء الجدول",
-                "ساعات المذاكرة المرنة",
-                "مواعيد نزول المحاضرات"
-        };
-    }
-
-    private String[] guideBodies() {
-        return new String[] {
-                "الجدول يُبنى من مهامك (المحاضرات) + الإعدادات (النوم، التجهيز، الراحة، أيام الراحة، الالتزامات) عند الضغط على «إنشاء خطتي».\n\nالتطبيق يحسب المدة المتبقية لكل مهمة، يرتّب المهام حسب الأولوية وقرب الامتحان والقواعد الحالية، ثم يوزّع الجلسات على عدد الأيام الذي تختاره.\n\nعرض «اليوم / الأسبوع / مخصص» يعرض الجلسات فقط ولا يعيد حساب الخطة.",
-                "من صفحة الجدول اضغط «إنشاء خطتي».\nتختار:\n1) عدد الأيام التي توزَّع عليها المهام.\n2) طريقة توزيع المحاضرات (واحدة من الثلاث أدناه).\n\nبعد التأكيد يُعاد بناء الجلسات غير المكتملة/غير المثبتة وفق المنطق الحالي، مع احترام النوم والالتزامات وأيام الراحة والأيام المفضلة/المثبتة إن وُجدت.",
-                "• اليوم: كل جلسات تاريخ اليوم فقط.\n• الأسبوع: من السبت إلى الجمعة للأسابيع الحالية، بأسماء الأيام كاملة.\n• مخصص: نافذة بعدد أيام الخطة التي اخترتها في «إنشاء خطتي» (planDays).\nالتبديل بين العروض لا يغيّر طريقة التوزيع ولا يعيد إنشاء الجدول.",
-                "الاسم داخل التطبيق: «كل يوم جزء من كل محاضرة» (وضع التوزيع 0).\n\nالمعنى الفعلي:\n• يُحسب المتبقي لكل محاضرة.\n• تُقسَّم مدة كل محاضرة على أيام العمل المتاحة قدر الإمكان (توزيع متوازي).\n• في نفس اليوم قد تظهر أجزاء من محاضرات مختلفة.\n• لا يُشترط إنهاء محاضرة كاملة قبل بدء أخرى.\n• يظل يحترم سعة اليوم (وقت متاح بعد النوم/الالتزامات) والقيود الأقوى.",
-                "الاسم داخل التطبيق: «جلسات المحاضرة ورا بعض» (وضع التوزيع 1).\n\nالمعنى الفعلي في الكود الحالي:\n• يُحسب إجمالي المدة المتبقية لكل المحاضرات ÷ عدد أيام العمل ≈ هدف يومي بالدقائق.\n• تُملأ الأيام بالتتابع: تُنهى محاضرة A (كل حصصها المتبقية بالترتيب) قبل الانتقال إلى B، وهكذا.\n• ممنوع نمط تداخل مثل A→B→A لنفس التوزيع.\n• إن لم تكتمل A في يوم، اليوم التالي يكمل A أولًا.\n• الـGap الطبيعي (التزام/صلاة/جلسة أخرى) مسموح؛ التتابع منطقي وليس لصقًا بلا فجوات.\n• أي متبقٍ بسبب قيد يوم يُكمَل في أيام لاحقة بنفس الترتيب.",
-                "الاسم داخل التطبيق: «محاضرة واحدة في اليوم» (وضع التوزيع 2).\n\nالمعنى الفعلي:\n• يُفضَّل تخصيص يوم عمل لمحاضرة واحدة حتى تنتهي مدتها المتبقية في ذلك اليوم (ضمن السعة).\n• لا تُخلط محاضرتان في نفس اليوم طالما ما زالت المحاضرة الحالية تحتاج وقتًا واليوم ما زال مخصصًا لها.\n• إن احتاجت المحاضرة أكثر من يوم، تُكمَل في أيام لاحقة قبل فتح يوم لمحاضرة جديدة حسب القواعد الحالية.\n• يحترم سعة اليوم والقيود الثابتة كباقي الأوضاع.",
-                "مهما كانت طريقة التوزيع، الجدول لا يكسر:\n• وقت الاستيقاظ + التجهيز الصباحي → أول دراسة.\n• وقت النوم → نهاية نافذة الدراسة.\n• أيام الراحة.\n• الالتزامات والأوقات غير المتاحة.\n• الجلسات المكتملة والمثبتة يدويًا (مثل بعد السحب الحر).\n• قيود اليوم المفضل / أيام المادة عند تفعيلها.\n\nطريقة التوزيع تغيّر ترتيب وتعبئة الحصص فقط داخل هذه الحدود.",
-                "بعد إنشاء الجدول تظهر الجلسات في اليوم/الأسبوع/مخصص.\nمن بطاقة الجلسة (بدون تعديل/حذف المهمة من هنا):\n• ابدأ · تم الإنجاز · نقل · المدة · وإعادة جدولة إن كانت فائتة.\nتعديل بيانات المهمة أو حذفها يتم من تبويب «المهام» فقط.",
-                "من المزيد → التخطيط → ساعات المذاكرة يمكنك (اختياريًا) تحديد حد أدنى ومستهدف وحد أقصى لساعات المذاكرة اليومية.\n\n• إن لم تفعّل الميزة: التخطيط يعمل كالمعتاد دون أي سقف إضافي.\n• إن فعّلتها: يُطبَّق سقف ناعم عند الحد الأقصى فقط حتى لا يُحمَّل اليوم بأكثر مما اخترت، مع احترام النوم والالتزامات والراحة.\n• الهدف والحد الأدنى توجيهان مرنان حسب ازدحام اليوم وليسا رقمًا إجباريًا كل يوم.\n• لا تُكسر مواعيد النوم أو الالتزامات بسبب هذه الإعدادات.",
-                "من المزيد → التخطيط → مواعيد نزول المحاضرات تربط المادة بأيام نزول (يمكن أكثر من يوم) ووقت اختياري.\n\n• موعد النزول هدف مرن (Soft) وليس Deadline صارمًا.\n• عند التفعيل فقط: ترتفع أولوية المحاضرات تدريجيًا قبل يوم النزول لاستغلال الأيام الأفرغ.\n• إن لم يُضبط شيء: ترتيب المحاضرات يبقى كما هو في النظام الحالي.\n• عدم إنهاء المحاضرة قبل النزول لا يُفشل الخطة؛ تبقى في المتبقي/Backlog وتُوزَّع لاحقًا.\n• المحاضرات الجديدة لا تلغي القديمة."
-        };
-    }
-
-    private View buildUserGuideContent() {
-        ScrollView sc = new ScrollView(this);
-        sc.setFillViewport(true);
+    private LinearLayout statMetric(String icon, String value, String labelText) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18), dp(18), dp(18), dp(28));
-        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        sc.addView(box);
+        box.setGravity(Gravity.CENTER);
+        TextView i = new TextView(this);
+        i.setText(icon);
+        i.setTextColor(ACCENT);
+        i.setTextSize(16);
+        i.setGravity(Gravity.CENTER);
+        box.addView(i);
+        TextView v = new TextView(this);
+        v.setText(value);
+        v.setTextColor(TEXT);
+        v.setTextSize(15);
+        v.setTypeface(Typeface.DEFAULT_BOLD);
+        v.setGravity(Gravity.CENTER);
+        box.addView(v);
+        TextView l = muted(labelText);
+        l.setTextSize(10);
+        l.setGravity(Gravity.CENTER);
+        box.addView(l);
+        return box;
+    }
 
-        String[] sections = guideSections();
-        String[] bodies = guideBodies();
-
-        if (guideMode == 2 && guideTopic >= 0 && guideTopic < sections.length) {
-            TextView back = link("→ رجوع لقائمة الدليل");
-            back.setOnClickListener(v -> {
-                guideMode = 1;
-                guideTopic = -1;
-                showTab(4);
-            });
-            box.addView(back);
-            box.addView(space(dp(12)));
-            TextView h = title(sections[guideTopic]);
-            box.addView(h);
-            box.addView(space(dp(8)));
-            TextView body = new TextView(this);
-            body.setText(bodies[guideTopic]);
-            body.setTextColor(TEXT);
-            body.setTextSize(14);
-            body.setLineSpacing(dp(4), 1.15f);
-            box.addView(body);
-            box.addView(space(dp(20)));
-            TextView close = chip("إغلاق الدليل", false);
-            close.setOnClickListener(v -> closeUserGuide());
-            box.addView(close);
-            return sc;
+    private class StatsGaugeView extends View {
+        private int percent = 0;
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        StatsGaugeView(android.content.Context context) {
+            super(context);
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         }
-
-        // قائمة المواضيع
-        TextView backMore = link("→ رجوع للمزيد");
-        backMore.setOnClickListener(v -> closeUserGuide());
-        box.addView(backMore);
-        box.addView(space(dp(8)));
-        box.addView(title("دليل المستخدم"));
-        box.addView(muted("اختر موضوعًا لمعرفة معناه ومتى تستخدمه."));
-        box.addView(space(dp(12)));
-        for (int i = 0; i < sections.length; i++) {
-            final int idx = i;
-            TextView row = chip(sections[i], false);
-            row.setOnClickListener(v -> openGuideTopic(idx));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = dp(6);
-            box.addView(row, lp);
+        void setPercent(int value) {
+            percent = Math.max(0, Math.min(100, value));
+            invalidate();
         }
-        return sc;
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float w = getWidth(), h = getHeight();
+            float cx = w / 2f, cy = h * 0.62f;
+            float radius = Math.min(w * 0.34f, h * 0.42f);
+            RectF oval = new RectF(cx - radius, cy - radius, cx + radius, cy + radius);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(18));
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setColor(CARD2);
+            canvas.drawArc(oval, 135, 270, false, p);
+            p.setShader(new android.graphics.LinearGradient(0, 0, w, 0,
+                    new int[]{0xFFE25563, 0xFFE6B84D, 0xFF3DCF8E},
+                    null, android.graphics.Shader.TileMode.CLAMP));
+            canvas.drawArc(oval, 135, 270f * percent / 100f, false, p);
+            p.setShader(null);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(TEXT);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTypeface(Typeface.DEFAULT_BOLD);
+            p.setTextSize(dp(38));
+            canvas.drawText(percent + "%", cx, cy + dp(12), p);
+            p.setTextSize(dp(12));
+            p.setColor(MUTED);
+            canvas.drawText("الإنجاز الكلي", cx, cy + dp(34), p);
+        }
     }
 
     private View buildRoutineScreen() {
