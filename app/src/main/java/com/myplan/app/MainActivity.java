@@ -5320,7 +5320,7 @@ private View buildRoutineScreen() {
                 leftTime.setGravity(Gravity.CENTER);
                 leftTime.setPadding(dp(8), 0, dp(4), 0);
                 leftTime.addView(whenTv, new LinearLayout.LayoutParams(dp(92), dp(44)));
-                head.addView(leftTime, new LinearLayout.LayoutParams(dp(98), dp(58)));\n\n                TextView arrow = new TextView(this);\n                arrow.setText("‹");\n                arrow.setTextColor(ACCENT);\n                arrow.setTextSize(30);\n                arrow.setGravity(Gravity.CENTER);\n                arrow.setTypeface(Typeface.DEFAULT_BOLD);\n                head.addView(arrow, new LinearLayout.LayoutParams(dp(34), dp(58)));
+                head.addView(leftTime, new LinearLayout.LayoutParams(dp(98), dp(58)));
                 examCard.addView(head);
                 examCard.addView(space(dp(10)));
 
