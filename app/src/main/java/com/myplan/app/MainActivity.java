@@ -4087,9 +4087,9 @@ public class MainActivity extends Activity {
 
         int studyHours = Math.max(0, planner.doneMinutes()) / 60;
         int completed = 0, remaining = 0;
-        for (Planner.Session ss : planner.sessions) {
-            if (ss == null) continue;
-            if (ss.done) completed++; else remaining++;
+        for (Planner.Task task : planner.tasks) {
+            if (task == null) continue;
+            if (task.done) completed++; else remaining++;
         }
         metrics.addView(statMetricCard("ساعات\nالمذاكرة", String.valueOf(studyHours)));
         metrics.addView(space(dp(8)));
@@ -4109,7 +4109,7 @@ public class MainActivity extends Activity {
         chartCard.addView(chartTitle);
         chartCard.addView(space(dp(12)));
         SevenDayProgressChart chart = new SevenDayProgressChart(this);
-        chart.setDays(lastSevenDayProgress());
+        chart.setDays(lastSevenDayProgress(), lastSevenDayLabels());
         chartCard.addView(chart, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(190)));
         box.addView(chartCard);
         return sc;
@@ -4191,23 +4191,40 @@ public class MainActivity extends Activity {
         private static float dp(android.content.Context c,float v){return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,v,c.getResources().getDisplayMetrics());}
     }
 
+    private String[] lastSevenDayLabels() {
+        String[] labels = new String[7];
+        String[] names = {"الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"};
+        Calendar base = Calendar.getInstance();
+        base.set(Calendar.HOUR_OF_DAY,0); base.set(Calendar.MINUTE,0); base.set(Calendar.SECOND,0); base.set(Calendar.MILLISECOND,0);
+        for (int i=6;i>=0;i--) {
+            Calendar d=(Calendar)base.clone();
+            d.add(Calendar.DAY_OF_MONTH,-i);
+            labels[6-i]=names[Math.max(1,d.get(Calendar.DAY_OF_WEEK))-1];
+        }
+        return labels;
+    }
+
     private static class SevenDayProgressChart extends View {
         private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
         private int[] values=new int[7];
-        private final String[] names={"س","ح","ن","ث","ر","خ","ج"};
+        private String[] names={"","","","","","",""};
         SevenDayProgressChart(android.content.Context c){super(c);}
-        void setDays(int[] v){if(v!=null&&v.length==7)values=v.clone();invalidate();}
+        void setDays(int[] v,String[] labels){
+            if(v!=null&&v.length==7)values=v.clone();
+            if(labels!=null&&labels.length==7)names=labels.clone();
+            invalidate();
+        }
         @Override protected void onDraw(Canvas canvas){
             float w=getWidth(),h=getHeight(),left=dp(getContext(),8),right=w-left,top=dp(getContext(),6),bottom=h-dp(getContext(),28);
             float gap=dp(getContext(),8),barW=(right-left-gap*6)/7f,sg=dp(getContext(),2),sh=(bottom-top-sg*9)/10f;
             for(int d=0;d<7;d++){
-                float x=left+d*(barW+gap); int completed=Math.round(values[d]/10f);
+                float x=left+d*(barW+gap); int completed=Math.min(10,values[d]/10);
                 for(int seg=0;seg<10;seg++){
                     float y=bottom-(seg+1)*sh-seg*sg; p.setStyle(Paint.Style.FILL);
                     p.setColor(seg<completed?ACCENT:0x224B6DFF);
                     canvas.drawRoundRect(x,y,x+barW,y+sh,dp(getContext(),3),dp(getContext(),3),p);
                 }
-                p.setColor(TEXT);p.setTextSize(dp(getContext(),11));p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);
+                p.setColor(TEXT);p.setTextSize(dp(getContext(),9));p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);
                 canvas.drawText(names[d],x+barW/2f,h-dp(getContext(),8),p);
             }
         }
