@@ -356,9 +356,9 @@ public class MainActivity extends Activity {
 
     private boolean needsForceUpdate(String current, String minimum) {
         if (minimum == null || minimum.trim().isEmpty()) return false;
-        if (current == null || current.trim().isEmpty()) return false;
+        if (current == null || currentS.trim().isEmpty()) return false;
         try {
-            String[] a = current.trim().split("\\.");
+            String[] a = currentS.trim().split("\\.");
             String[] b = minimum.trim().split("\\.");
             int n = Math.max(a.length, b.length);
             for (int i = 0; i < n; i++) {
@@ -687,41 +687,43 @@ public class MainActivity extends Activity {
         box.addView(dayHead);
         box.addView(space(dp(10)));
 
+        final Planner.Session currentS = current;
+        final Planner.Session nextS = next;
         LinearLayout nowCard = card();
         nowCard.setOrientation(LinearLayout.VERTICAL);
-        if (current != null) {
+        if (currentS != null) {
             TextView tag = muted("الآن");
             tag.setTextColor(ACCENT);
             nowCard.addView(tag);
             TextView n = new TextView(this);
-            n.setText(current.taskName);
+            n.setText(currentS.taskName);
             n.setTextColor(TEXT);
             n.setTextSize(17);
             n.setTypeface(Typeface.DEFAULT_BOLD);
             nowCard.addView(n);
-            String subj = current.subject == null ? "" : current.subject;
-            nowCard.addView(muted((subj.isEmpty() ? "" : subj + " · ") + current.timeLabel()));
-            int leftMin = Math.max(0, (current.endMin <= current.startMin ? current.endMin + 24 * 60 : current.endMin) - nowM);
+            String subj = currentS.subject == null ? "" : currentS.subject;
+            nowCard.addView(muted((subj.isEmpty() ? "" : subj + " · ") + currentS.timeLabel()));
+            int leftMin = Math.max(0, (currentS.endMin <= currentS.startMin ? currentS.endMin + 24 * 60 : currentS.endMin) - nowM);
             nowCard.addView(muted("متبقي ~" + leftMin + " د"));
             nowCard.addView(space(dp(8)));
             Button doneBtn = primaryBtn("تم الإنجاز");
-            doneBtn.setOnClickListener(v -> finishSessionWithChoice(current));
+            doneBtn.setOnClickListener(v -> finishSessionWithChoice(currentS));
             nowCard.addView(doneBtn, fullBtnLp());
-            if (next != null) nowCard.addView(muted("التالي: " + next.taskName + " · " + next.timeLabel()));
-        } else if (next != null) {
+            if (next != null) nowCard.addView(muted("التالي: " + nextS.taskName + " · " + nextS.timeLabel()));
+        } else if (nextS != null) {
             nowCard.addView(muted(isToday ? "القادمة" : "أول جلسة"));
             TextView n = new TextView(this);
-            n.setText(next.taskName);
+            n.setText(nextS.taskName);
             n.setTextColor(TEXT);
             n.setTextSize(17);
             n.setTypeface(Typeface.DEFAULT_BOLD);
             nowCard.addView(n);
             String subj = next.subject == null ? "" : next.subject;
-            nowCard.addView(muted((subj.isEmpty() ? "" : subj + " · ") + next.timeLabel()));
-            if (!next.done) {
+            nowCard.addView(muted((subj.isEmpty() ? "" : subj + " · ") + nextS.timeLabel()));
+            if (!nextS.done) {
                 nowCard.addView(space(dp(8)));
                 Button startBtn = primaryBtn("ابدأ");
-                startBtn.setOnClickListener(v -> openTimer(next));
+                startBtn.setOnClickListener(v -> openTimer(nextS));
                 nowCard.addView(startBtn, fullBtnLp());
             }
         } else {
