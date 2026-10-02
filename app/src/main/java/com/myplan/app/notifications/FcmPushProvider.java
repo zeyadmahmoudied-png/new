@@ -11,11 +11,11 @@ public final class FcmPushProvider implements PushProvider {
     @Override public NotificationResult<String> getRegistrationToken() {
         try {
             String token = Tasks.await(FirebaseMessaging.getInstance().getToken(), 12, TimeUnit.SECONDS);
-            return token == null || token.isEmpty() ? NotificationResult.unknown("FCM token empty")
+            return token == null || token.isEmpty() ? NotificationResult.error("FCM token empty")
                     : NotificationResult.success(token);
-        } catch (Throwable t) { return NotificationResult.unknown("FCM unavailable"); }
+        } catch (Throwable t) { return NotificationResult.error("FCM unavailable"); }
     }
     @Override public NotificationResult<Void> sendTestPush() {
-        return NotificationResult.validation(0, "الإرسال يتم من Control Center، وليس من الجهاز");
+        return NotificationResult.notConfigured();
     }
 }
