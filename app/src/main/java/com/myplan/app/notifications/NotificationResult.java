@@ -35,6 +35,10 @@ public final class NotificationResult<T> {
         return new NotificationResult<>(Kind.PERMISSION_DENIED, null, "Notification permission denied");
     }
 
+    public static <T> NotificationResult<T> error(String message) {
+        return new NotificationResult<>(Kind.ERROR, null, message);
+    }
+
     public static <T> NotificationResult<T> success(T data) {
         return new NotificationResult<>(Kind.SUCCESS, data, "OK");
     }
