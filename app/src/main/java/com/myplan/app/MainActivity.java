@@ -458,11 +458,12 @@ public class MainActivity extends Activity {
         root.addView(navWrap, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        navSchedule = navItem("الجدول");
-        navTasks = navItem("المهام");
-        navExams = navItem("الامتحانات");
-        navStats = navItem("الإحصائيات");
-        navRoutine = navItem("المزيد");
+        // نفس الترتيب الحالي تمامًا؛ فقط أيقونة معبرة + اختيار أوضح وأشيك.
+        navSchedule = navItem("📅  الجدول");
+        navTasks = navItem("✓  المهام");
+        navExams = navItem("📝  الامتحانات");
+        navStats = navItem("◉  الإحصائيات");
+        navRoutine = navItem("☰  المزيد");
         nav.addView(navSchedule, navLp());
         nav.addView(navTasks, navLp());
         nav.addView(navExams, navLp());
@@ -484,7 +485,23 @@ public class MainActivity extends Activity {
         t.setTextColor(MUTED);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setPadding(dp(2), dp(8), dp(2), dp(8));
+        t.setSingleLine(true);
         return t;
+    }
+
+    private void styleNavItem(TextView t, boolean selected) {
+        if (t == null) return;
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(12));
+        if (selected) {
+            bg.setColor(0x334B6DFF);
+            bg.setStroke(dp(1), 0x664B6DFF);
+            t.setTextColor(0xFFFFFFFF);
+        } else {
+            bg.setColor(0x00141A24);
+            t.setTextColor(MUTED);
+        }
+        t.setBackground(bg);
     }
 
     private LinearLayout.LayoutParams navLp() {
@@ -501,11 +518,11 @@ public class MainActivity extends Activity {
             AppInfrastructure.setDeveloperUnlocked(this, false);
         }
         tab = t;
-        navSchedule.setTextColor(t == 0 ? ACCENT : MUTED);
-        navTasks.setTextColor(t == 1 ? ACCENT : MUTED);
-        navStats.setTextColor(t == 2 ? ACCENT : MUTED);
-        navExams.setTextColor(t == 3 ? ACCENT : MUTED);
-        navRoutine.setTextColor(t == 4 ? ACCENT : MUTED);
+        styleNavItem(navSchedule, t == 0);
+        styleNavItem(navTasks, t == 1);
+        styleNavItem(navExams, t == 3);
+        styleNavItem(navStats, t == 2);
+        styleNavItem(navRoutine, t == 4);
         updateMoreNavBadge();
         content.removeAllViews();
         if (t == 0) { weekView = false; content.addView(buildScheduleScreen()); maybeOfferMissedSessions(); }
@@ -3582,7 +3599,7 @@ public class MainActivity extends Activity {
             form.addView(multiLink);
         }
 
-        EditText name = field();
+        EditText name = dialogField();
         name.setHint("اسم المهمة / المحاضرة");
         form.addView(label("الاسم"));
         form.addView(name);
@@ -3597,7 +3614,7 @@ public class MainActivity extends Activity {
         form.addView(subject);
 
         form.addView(label("مدة المهمة كاملة (دقيقة)"));
-        EditText durationEt = field();
+        EditText durationEt = dialogField();
         durationEt.setInputType(InputType.TYPE_CLASS_NUMBER);
         durationEt.setHint("مثلاً 180");
         form.addView(durationEt);
@@ -4044,18 +4061,21 @@ public class MainActivity extends Activity {
         box.addView(title("الإحصائيات"));
         box.addView(space(dp(10)));
 
+        // مزامنة حالة المهام من الجلسات قبل رسم الأرقام حتى لا تظل الإحصائيات قديمة.
+        planner.refreshRemainingFromSessions();
         int total = planner.totalMinutes();
-        int done = planner.doneMinutes();
+        int done = Math.max(0, Math.min(total, planner.doneMinutes()));
         int pct = total > 0 ? Math.max(0, Math.min(100, (int)Math.round(100.0 * done / total))) : 0;
 
         LinearLayout hero = card();
-        hero.setPadding(dp(18), dp(18), dp(18), dp(18));
+        hero.setPadding(dp(12), dp(10), dp(12), dp(10));
         hero.setGravity(Gravity.CENTER_VERTICAL);
         hero.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        hero.setMinimumHeight(dp(112));
 
         ProgressHeroGauge gauge = new ProgressHeroGauge(this);
         gauge.setProgress(pct);
-        hero.addView(gauge, new LinearLayout.LayoutParams(dp(128), dp(128)));
+        hero.addView(gauge, new LinearLayout.LayoutParams(dp(96), dp(96)));
 
         LinearLayout heroText = new LinearLayout(this);
         heroText.setOrientation(LinearLayout.VERTICAL);
@@ -4064,7 +4084,7 @@ public class MainActivity extends Activity {
         TextView message = new TextView(this);
         message.setText(progressMessage(pct));
         message.setTextColor(TEXT);
-        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         message.setTypeface(Typeface.DEFAULT_BOLD);
         message.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         message.setLineSpacing(dp(2), 1.08f);
@@ -4072,14 +4092,14 @@ public class MainActivity extends Activity {
         TextView sub = new TextView(this);
         sub.setText("نسبة الإنجاز الكلية");
         sub.setTextColor(ACCENT);
-        sub.setTextSize(13);
+        sub.setTextSize(12);
         sub.setTypeface(Typeface.DEFAULT_BOLD);
-        sub.setPadding(0, dp(8), 0, 0);
+        sub.setPadding(0, dp(6), 0, 0);
         heroText.addView(sub);
         hero.addView(heroText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         box.addView(hero);
 
-        box.addView(space(dp(12)));
+        box.addView(space(dp(10)));
         LinearLayout metrics = new LinearLayout(this);
         metrics.setOrientation(LinearLayout.HORIZONTAL);
         metrics.setGravity(Gravity.CENTER);
@@ -4091,11 +4111,11 @@ public class MainActivity extends Activity {
             if (task == null) continue;
             if (task.done) completed++; else remaining++;
         }
-        metrics.addView(statMetricCard("ساعات\nالمذاكرة", String.valueOf(studyHours)));
+        metrics.addView(statMetricCard("المذاكرة", String.valueOf(studyHours)));
         metrics.addView(space(dp(8)));
-        metrics.addView(statMetricCard("المهام\nالمكتملة", String.valueOf(completed)));
+        metrics.addView(statMetricCard("المهام المكتملة", String.valueOf(completed)));
         metrics.addView(space(dp(8)));
-        metrics.addView(statMetricCard("المهام\nالمتبقية", String.valueOf(remaining)));
+        metrics.addView(statMetricCard("المهام المتبقية", String.valueOf(remaining)));
         box.addView(metrics);
 
         box.addView(space(dp(14)));
@@ -4132,7 +4152,7 @@ public class MainActivity extends Activity {
         LinearLayout c = card();
         c.setGravity(Gravity.CENTER);
         c.setPadding(dp(8), dp(10), dp(8), dp(10));
-        c.setLayoutParams(new LinearLayout.LayoutParams(0, dp(92), 1f));
+        c.setLayoutParams(new LinearLayout.LayoutParams(0, dp(82), 1f));
         TextView v = new TextView(this);
         v.setText(value);
         v.setTextColor(ACCENT);
@@ -4177,15 +4197,34 @@ public class MainActivity extends Activity {
         private int percent;
         ProgressHeroGauge(android.content.Context c) { super(c); }
         void setProgress(int v) { percent = Math.max(0, Math.min(100, v)); invalidate(); }
+
         @Override protected void onDraw(Canvas canvas) {
             float cx=getWidth()/2f, cy=getHeight()/2f, r=Math.min(getWidth(),getHeight())*.38f;
-            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(dp(getContext(),12)); p.setStrokeCap(Paint.Cap.ROUND);
-            rect.set(cx-r,cy-r,cx+r,cy+r); p.setColor(0x223E5BFF); p.setShader(null);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(getContext(),10));
+            p.setStrokeCap(Paint.Cap.ROUND);
+            rect.set(cx-r,cy-r,cx+r,cy+r);
+
+            p.setColor(0x334B6DFF);
+            p.setShader(null);
             canvas.drawArc(rect,-90,360,false,p);
-            p.setShader(new SweepGradient(cx,cy,new int[]{0xFFE25563,0xFFE6B84D,0xFF45C98A},new float[]{0f,.5f,1f}));
-            canvas.drawArc(rect,-90,Math.max(1f,percent*3.6f),false,p); p.setShader(null);
-            p.setStyle(Paint.Style.FILL); p.setColor(TEXT); p.setTypeface(Typeface.DEFAULT_BOLD); p.setTextAlign(Paint.Align.CENTER);
-            p.setTextSize(dp(getContext(),25)); Paint.FontMetrics fm=p.getFontMetrics();
+
+            // 10 درجات ثابتة: أحمر → برتقالي → أصفر → أخضر، والأخضر الأخير مميز.
+            int[] colors = new int[]{
+                    0xFFE53935, 0xFFEF5350, 0xFFF4511E, 0xFFFF8A00, 0xFFFFB300,
+                    0xFFFDD835, 0xFF9CCC65, 0xFF66BB6A, 0xFF2EBD74, 0xFF00E676
+            };
+            float[] pos = new float[]{0f,.1f,.2f,.3f,.4f,.5f,.6f,.7f,.8f,.9f};
+            p.setShader(new SweepGradient(cx,cy,colors,pos));
+            canvas.drawArc(rect,-90,Math.max(1f,percent*3.6f),false,p);
+            p.setShader(null);
+
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(TEXT);
+            p.setTypeface(Typeface.DEFAULT_BOLD);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTextSize(dp(getContext(),23));
+            Paint.FontMetrics fm=p.getFontMetrics();
             canvas.drawText(percent+"%",cx,cy-(fm.ascent+fm.descent)/2f,p);
         }
         private static float dp(android.content.Context c,float v){return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,v,c.getResources().getDisplayMetrics());}
@@ -4215,16 +4254,29 @@ public class MainActivity extends Activity {
             invalidate();
         }
         @Override protected void onDraw(Canvas canvas){
-            float w=getWidth(),h=getHeight(),left=dp(getContext(),8),right=w-left,top=dp(getContext(),6),bottom=h-dp(getContext(),28);
-            float gap=dp(getContext(),8),barW=(right-left-gap*6)/7f,sg=dp(getContext(),2),sh=(bottom-top-sg*9)/10f;
+            float w=getWidth(),h=getHeight();
+            float left=dp(getContext(),8),right=w-left,top=dp(getContext(),6),bottom=h-dp(getContext(),28);
+            float gap=dp(getContext(),9),barW=(right-left-gap*6)/7f,barH=bottom-top;
+
             for(int d=0;d<7;d++){
-                float x=left+d*(barW+gap); int completed=Math.min(10,values[d]/10);
-                for(int seg=0;seg<10;seg++){
-                    float y=bottom-(seg+1)*sh-seg*sg; p.setStyle(Paint.Style.FILL);
-                    p.setColor(seg<completed?ACCENT:0x224B6DFF);
-                    canvas.drawRoundRect(x,y,x+barW,y+sh,dp(getContext(),3),dp(getContext(),3),p);
+                float x=left+d*(barW+gap);
+                // الامتلاء يقفز على درجات 10% لكن يظل عمودًا واحدًا متصلًا.
+                int level=Math.max(0,Math.min(10,(values[d]+5)/10));
+                float filled=barH*(level/10f);
+
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(0x224B6DFF);
+                canvas.drawRoundRect(x,top,x+barW,bottom,dp(getContext(),5),dp(getContext(),5),p);
+
+                if(filled>0){
+                    p.setColor(ACCENT);
+                    canvas.drawRoundRect(x,bottom-filled,x+barW,bottom,dp(getContext(),5),dp(getContext(),5),p);
                 }
-                p.setColor(TEXT);p.setTextSize(dp(getContext(),9));p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);
+
+                p.setColor(TEXT);
+                p.setTextSize(dp(getContext(),9));
+                p.setTypeface(Typeface.DEFAULT_BOLD);
+                p.setTextAlign(Paint.Align.CENTER);
                 canvas.drawText(names[d],x+barW/2f,h-dp(getContext(),8),p);
             }
         }
@@ -5111,24 +5163,24 @@ public class MainActivity extends Activity {
     private void showExamDialog(Planner.Exam existing) {
         LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(18),dp(12),dp(18),dp(10));form.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         final String[] subjectHold={existing!=null&&existing.subject!=null?existing.subject:""};
-        TextView subjectLabel=label("المادة");subjectLabel.setTextColor(ACCENT);form.addView(subjectLabel);
-        TextView subject=chip(subjectHold[0].isEmpty()?"اختار مادة":subjectHold[0],true);subject.setTextColor(ACCENT);form.addView(subject);
+        TextView subjectLabel=label("المادة");subjectLabel.setTextColor(TEXT);form.addView(subjectLabel);
+        TextView subject=chip(subjectHold[0].isEmpty()?"اختار مادة":subjectHold[0],true);form.addView(subject);
         form.addView(space(dp(8)));
-        TextView titleLabel=label("اسم الامتحان");titleLabel.setTextColor(ACCENT);form.addView(titleLabel);
-        EditText title=field();title.setTextColor(ACCENT);title.setHintTextColor(0xAA4B6DFF);title.setHint("اسم الامتحان");if(existing!=null&&existing.title!=null)title.setText(existing.title);form.addView(title);
+        TextView titleLabel=label("اسم الامتحان");titleLabel.setTextColor(TEXT);form.addView(titleLabel);
+        EditText title=dialogField();title.setHint("اسم الامتحان");if(existing!=null&&existing.title!=null)title.setText(existing.title);form.addView(title);
         form.addView(space(dp(8)));
-        TextView dateLabel=label("تاريخ الامتحان");dateLabel.setTextColor(ACCENT);form.addView(dateLabel);
+        TextView dateLabel=label("تاريخ الامتحان");dateLabel.setTextColor(TEXT);form.addView(dateLabel);
         final String[] day={existing!=null&&existing.day!=null?existing.day:""};
-        TextView dayTv=chip(day[0].isEmpty()?"اختار التاريخ":day[0],true);dayTv.setTextColor(ACCENT);
+        TextView dayTv=chip(day[0].isEmpty()?"اختار التاريخ":day[0],true);
         dayTv.setOnClickListener(v->{Calendar cal=Calendar.getInstance();DatePickerDialog dpd=new DatePickerDialog(this,(vv,y,m,d)->{day[0]=String.format(Locale.US,"%04d-%02d-%02d",y,m+1,d);dayTv.setText(day[0]);dayTv.setTextColor(ACCENT);},cal.get(Calendar.YEAR),cal.get(Calendar.MONTH),cal.get(Calendar.DAY_OF_MONTH));dpd.setOnShowListener(x->styleBlueDialog(dpd));dpd.show();});form.addView(dayTv);
         form.addView(space(dp(12)));TextView moreToggle=link("خيارات إضافية ▾");moreToggle.setTextColor(ACCENT);form.addView(moreToggle);
         LinearLayout moreBox=new LinearLayout(this);moreBox.setOrientation(LinearLayout.VERTICAL);moreBox.setVisibility(View.GONE);moreBox.setPadding(0,dp(8),0,0);
-        TextView topicsLabel=label("الفصول أو الأجزاء");topicsLabel.setTextColor(ACCENT);moreBox.addView(topicsLabel);
-        EditText topics=field();topics.setTextColor(ACCENT);topics.setHintTextColor(0xAA4B6DFF);topics.setHint("اختياري");if(existing!=null&&existing.topics!=null)topics.setText(existing.topics);moreBox.addView(topics);
-        moreBox.addView(space(dp(8)));final int[] prep={existing!=null?existing.prepLevel:40};TextView prepTv=new TextView(this);prepTv.setText("مستوى التحضير: "+prep[0]+"%");prepTv.setTextColor(ACCENT);prepTv.setTextSize(12);SeekBar prepBar=new SeekBar(this);prepBar.setMax(100);prepBar.setProgress(prep[0]);prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){prep[0]=p;prepTv.setText("مستوى التحضير: "+p+"%");}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});moreBox.addView(prepTv);moreBox.addView(prepBar);
-        moreBox.addView(space(dp(8)));TextView lastLabel=label("آخر محاضرة داخلة في الامتحان");lastLabel.setTextColor(ACCENT);moreBox.addView(lastLabel);TextView lastHint=muted("مثال: محاضرة 7 → الامتحان يشمل 1…7.");lastHint.setTextColor(0xAA4B6DFF);moreBox.addView(lastHint);
+        TextView topicsLabel=label("الفصول أو الأجزاء");topicsLabel.setTextColor(TEXT);moreBox.addView(topicsLabel);
+        EditText topics=dialogField();topics.setHint("اختياري");if(existing!=null&&existing.topics!=null)topics.setText(existing.topics);moreBox.addView(topics);
+        moreBox.addView(space(dp(8)));final int[] prep={existing!=null?existing.prepLevel:40};TextView prepTv=new TextView(this);prepTv.setText("مستوى التحضير: "+prep[0]+"%");prepTv.setTextColor(TEXT);prepTv.setTextSize(12);SeekBar prepBar=new SeekBar(this);prepBar.setMax(100);prepBar.setProgress(prep[0]);prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){prep[0]=p;prepTv.setText("مستوى التحضير: "+p+"%");}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});moreBox.addView(prepTv);moreBox.addView(prepBar);
+        moreBox.addView(space(dp(8)));TextView lastLabel=label("آخر محاضرة داخلة في الامتحان");lastLabel.setTextColor(TEXT);moreBox.addView(lastLabel);TextView lastHint=muted("مثال: محاضرة 7 → الامتحان يشمل 1…7.");lastHint.setTextColor(MUTED);moreBox.addView(lastHint);
         final String[] lastLecId={existing!=null&&existing.lastLectureTaskId!=null?existing.lastLectureTaskId:""};String lastLecLabel="بدون تحديد";if(!lastLecId[0].isEmpty()){Planner.Task lt=planner.findTask(lastLecId[0]);if(lt!=null){int n=Planner.lectureNumber(lt);lastLecLabel=(n>=0?("محاضرة "+n+" — "):"")+(lt.name==null?"?":lt.name);}}
-        TextView lastLecTv=chip(lastLecLabel,true);lastLecTv.setTextColor(ACCENT);
+        TextView lastLecTv=chip(lastLecLabel,true);
         lastLecTv.setOnClickListener(v->{String sub=subjectHold[0]==null?"":subjectHold[0].trim();if(sub.isEmpty()){Toast.makeText(this,"اختار المادة أولًا",Toast.LENGTH_SHORT).show();return;}java.util.ArrayList<Planner.Task> lecs=new java.util.ArrayList<>();for(Planner.Task tk:planner.tasks)if(tk.subject!=null&&tk.subject.equals(sub))lecs.add(tk);lecs.sort((a,b)->Integer.compare(Planner.lectureNumber(a),Planner.lectureNumber(b)));String[] labels=new String[lecs.size()+1];labels[0]="بدون تحديد";for(int i=0;i<lecs.size();i++){Planner.Task tk=lecs.get(i);int n=Planner.lectureNumber(tk);labels[i+1]=(n>=0?("محاضرة "+n+" — "):"")+(tk.name==null?"?":tk.name)+(tk.done?" ✓":"");}AlertDialog ld=myDialog().setTitle("آخر محاضرة — "+sub).setItems(labels,(dd,w)->{if(w==0){lastLecId[0]="";lastLecTv.setText("بدون تحديد");}else{Planner.Task tk=lecs.get(w-1);lastLecId[0]=tk.id;int n=Planner.lectureNumber(tk);lastLecTv.setText((n>=0?("محاضرة "+n+" — "):"")+(tk.name==null?"?":tk.name));}lastLecTv.setTextColor(ACCENT);}).show();styleBlueDialog(ld);});
         moreBox.addView(lastLecTv);form.addView(moreBox);
         final boolean[] moreOpen={false};moreToggle.setOnClickListener(v->{moreOpen[0]=!moreOpen[0];moreBox.setVisibility(moreOpen[0]?View.VISIBLE:View.GONE);moreToggle.setText(moreOpen[0]?"خيارات إضافية ▴":"خيارات إضافية ▾");});
@@ -5142,8 +5194,8 @@ public class MainActivity extends Activity {
         try{
             int titleId=getResources().getIdentifier("alertTitle","id","android");
             TextView titleView=titleId!=0?dialog.findViewById(titleId):null;
-            if(titleView!=null)titleView.setTextColor(ACCENT);
-            TextView messageView=dialog.findViewById(android.R.id.message);if(messageView!=null)messageView.setTextColor(ACCENT);
+            if(titleView!=null)titleView.setTextColor(TEXT);
+            TextView messageView=dialog.findViewById(android.R.id.message);if(messageView!=null)messageView.setTextColor(TEXT);
             Button pos=dialog.getButton(AlertDialog.BUTTON_POSITIVE),neg=dialog.getButton(AlertDialog.BUTTON_NEGATIVE),neu=dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
             if(pos!=null)pos.setTextColor(ACCENT);if(neg!=null)neg.setTextColor(ACCENT);if(neu!=null)neu.setTextColor(ACCENT);
             View root=dialog.getWindow()==null?null:dialog.getWindow().getDecorView();if(root!=null)colorDialogText(root);
@@ -5151,9 +5203,15 @@ public class MainActivity extends Activity {
     }
 
     private void colorDialogText(View v) {
-        if(v instanceof EditText){((EditText)v).setTextColor(ACCENT);((EditText)v).setHintTextColor(0xAA4B6DFF);}
-        else if(v instanceof TextView)((TextView)v).setTextColor(ACCENT);
-        if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++)colorDialogText(g.getChildAt(i));}
+        // لا نلوّن كل الـTextViews بالأزرق؛ الـLabels في نماذج الإضافة تظل بيضاء.
+        if(v instanceof EditText){
+            ((EditText)v).setTextColor(TEXT);
+            ((EditText)v).setHintTextColor(0xB8FFFFFF);
+        }
+        if(v instanceof ViewGroup){
+            ViewGroup g=(ViewGroup)v;
+            for(int i=0;i<g.getChildCount();i++) colorDialogText(g.getChildAt(i));
+        }
     }
 
     interface NameTap { void apply(String name); }
@@ -6260,6 +6318,18 @@ public class MainActivity extends Activity {
         e.setBackground(bg);
         e.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         e.setTextDirection(View.TEXT_DIRECTION_RTL);
+        return e;
+    }
+
+    private EditText dialogField() {
+        EditText e = field();
+        e.setTextColor(TEXT);
+        e.setHintTextColor(0xB8FFFFFF);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xFF193A86);
+        bg.setCornerRadius(dp(RADIUS_SM));
+        bg.setStroke(dp(1), 0x664B6DFF);
+        e.setBackground(bg);
         return e;
     }
 
