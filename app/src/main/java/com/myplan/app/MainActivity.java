@@ -570,10 +570,11 @@ public class MainActivity extends Activity {
 
     private void setNavState(TextView view, boolean active) {
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(12));
-        bg.setColor(active ? SELECTED_BG : Color.TRANSPARENT);
+        bg.setCornerRadius(dp(14));
+        bg.setColor(active ? ACCENT_SOFT : Color.TRANSPARENT);
+        if (active) bg.setStroke(dp(1), ACCENT);
         view.setBackground(bg);
-        view.setTextColor(active ? SELECTED_TEXT : MUTED);
+        view.setTextColor(active ? ACCENT : MUTED);
         view.setTypeface(Typeface.DEFAULT_BOLD);
     }
 
