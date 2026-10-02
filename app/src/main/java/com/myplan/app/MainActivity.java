@@ -3679,7 +3679,7 @@ public class MainActivity extends Activity {
         TextView subject = chip(subjectHold[0].isEmpty() ? "اختار المادة ▾" : subjectHold[0], true);
         subject.setOnClickListener(v -> pickSubject(subjectHold[0], name0 -> {
             subjectHold[0] = name0;
-            subject.setText(name0);
+            subject.setText(name0);\n            subject.setTextColor(ACCENT);
         }));
         form.addView(subject);
 
@@ -5304,14 +5304,14 @@ private View buildRoutineScreen() {
                 TextView subjectTv = new TextView(this);
                 subjectTv.setText(e.subject == null ? "" : e.subject);
                 subjectTv.setTextColor(ACCENT);
-                subjectTv.setTextSize(15);
+                subjectTv.setTextSize(18);
                 subjectTv.setTypeface(Typeface.DEFAULT_BOLD);
                 titles.addView(subjectTv);
 
                 TextView examName = new TextView(this);
                 examName.setText((e.title == null || e.title.isEmpty()) ? "امتحان" : e.title);
                 examName.setTextColor(TEXT);
-                examName.setTextSize(19);
+                examName.setTextSize(22);
                 examName.setTypeface(Typeface.DEFAULT_BOLD);
                 titles.addView(examName);
                 head.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -5319,8 +5319,8 @@ private View buildRoutineScreen() {
                 LinearLayout leftTime = new LinearLayout(this);
                 leftTime.setGravity(Gravity.CENTER);
                 leftTime.setPadding(dp(8), 0, dp(4), 0);
-                leftTime.addView(whenTv, new LinearLayout.LayoutParams(dp(82), dp(44)));
-                head.addView(leftTime, new LinearLayout.LayoutParams(dp(92), dp(54)));
+                leftTime.addView(whenTv, new LinearLayout.LayoutParams(dp(92), dp(44)));
+                head.addView(leftTime, new LinearLayout.LayoutParams(dp(98), dp(58)));
                 examCard.addView(head);
                 examCard.addView(space(dp(10)));
 
@@ -5504,7 +5504,7 @@ private void showExamDialog(Planner.Exam existing) {
         form.addView(space(dp(8)));
         form.addView(examLabel("اسم الامتحان"));
         EditText title = field();
-        title.setHint("مثال: امتحان منتصف الترم");\n        title.setHintTextColor(withAlpha(ACCENT, 210));
+        title.setHint("مثال: امتحان منتصف الترم");\n        title.setHintTextColor(ACCENT);\n        title.setTextColor(ACCENT);
         if (existing != null && existing.title != null) title.setText(existing.title);
         form.addView(title);
 
@@ -5516,7 +5516,7 @@ private void showExamDialog(Planner.Exam existing) {
             Calendar cal = Calendar.getInstance();
             new DatePickerDialog(this, (vv, y, m, d) -> {
                 day[0] = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d);
-                dayTv.setText(day[0]);
+                dayTv.setText(day[0]);\n                dayTv.setTextColor(ACCENT);
             }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show();
         });
         form.addView(dayTv);
@@ -5534,20 +5534,20 @@ private void showExamDialog(Planner.Exam existing) {
 
         moreBox.addView(examLabel("الفصول / الأجزاء"));
         EditText topics = field();
-        topics.setHint("اختياري");\n        topics.setHintTextColor(withAlpha(ACCENT, 210));
+        topics.setHint("اختياري");\n        topics.setHintTextColor(ACCENT);\n        topics.setTextColor(ACCENT);
         if (existing != null && existing.topics != null) topics.setText(existing.topics);
         moreBox.addView(topics);
 
         moreBox.addView(space(dp(8)));
         final int[] prep = {existing != null ? existing.prepLevel : 40};
-        TextView prepTv = muted("مستوى التحضير: " + prep[0] + "%");
+        TextView prepTv = examLabel("مستوى التحضير: " + prep[0] + "%");
         SeekBar prepBar = new SeekBar(this);
         prepBar.setMax(100);
         prepBar.setProgress(prep[0]);
         prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 prep[0] = progress;
-                prepTv.setText("مستوى التحضير: " + progress + "%");
+                prepTv.setText("مستوى التحضير: " + progress + "%");\n                prepTv.setTextColor(ACCENT);
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
@@ -5557,7 +5557,7 @@ private void showExamDialog(Planner.Exam existing) {
 
         moreBox.addView(space(dp(8)));
         moreBox.addView(examLabel("آخر محاضرة داخلة في الامتحان"));
-        moreBox.addView(muted("مثال: محاضرة 7 → الامتحان يشمل 1…7."));
+        TextView lastLecHint = muted("مثال: محاضرة 7 → الامتحان يشمل 1…7.");\n        lastLecHint.setTextColor(withAlpha(ACCENT, 190));\n        moreBox.addView(lastLecHint);
         final String[] lastLecId = {existing != null && existing.lastLectureTaskId != null ? existing.lastLectureTaskId : ""};
         String lastLecLabel = "بدون تحديد ▾";
         if (!lastLecId[0].isEmpty()) {
@@ -5590,12 +5590,12 @@ private void showExamDialog(Planner.Exam existing) {
                     .setItems(labels, (dd, w) -> {
                         if (w == 0) {
                             lastLecId[0] = "";
-                            lastLecTv.setText("بدون تحديد ▾");
+                            lastLecTv.setText("بدون تحديد ▾");\n                            lastLecTv.setTextColor(ACCENT);
                         } else {
                             Planner.Task tk = lecs.get(w - 1);
                             lastLecId[0] = tk.id;
                             int n = Planner.lectureNumber(tk);
-                            lastLecTv.setText((n >= 0 ? ("محاضرة " + n + " — ") : "") + (tk.name == null ? "?" : tk.name));
+                            lastLecTv.setText((n >= 0 ? ("محاضرة " + n + " — ") : "") + (tk.name == null ? "?" : tk.name));\n                            lastLecTv.setTextColor(ACCENT);
                         }
                     }).show();
         });
