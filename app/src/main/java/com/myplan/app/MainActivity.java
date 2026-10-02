@@ -5140,7 +5140,9 @@ public class MainActivity extends Activity {
     private void styleBlueDialog(AlertDialog dialog) {
         if(dialog==null)return;
         try{
-            TextView titleView=dialog.findViewById(android.R.id.alertTitle);if(titleView!=null)titleView.setTextColor(ACCENT);
+            int titleId=getResources().getIdentifier("alertTitle","id","android");
+            TextView titleView=titleId!=0?dialog.findViewById(titleId):null;
+            if(titleView!=null)titleView.setTextColor(ACCENT);
             TextView messageView=dialog.findViewById(android.R.id.message);if(messageView!=null)messageView.setTextColor(ACCENT);
             Button pos=dialog.getButton(AlertDialog.BUTTON_POSITIVE),neg=dialog.getButton(AlertDialog.BUTTON_NEGATIVE),neu=dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
             if(pos!=null)pos.setTextColor(ACCENT);if(neg!=null)neg.setTextColor(ACCENT);if(neu!=null)neu.setTextColor(ACCENT);
