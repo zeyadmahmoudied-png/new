@@ -617,143 +617,167 @@ public class MainActivity extends Activity {
         tabs.addView(d,chipLp());tabs.addView(space(dp(6)));tabs.addView(w,chipLp());tabs.addView(space(dp(6)));tabs.addView(cu,chipLp());
         box.addView(tabs); box.addView(space(dp(14)));
 
-        if(scheduleViewMode==0){ addScheduleDayBlock(box,Planner.todayStr()); }
-        else {
+        if(scheduleViewMode==0){
+            List<Planner.Session> today=planner.sessionsForDay(Planner.todayStr());
+            addSchedulePeriodHeader(box, "اليوم", Planner.todayStr(), today);
+            addScheduleDayBlock(box,Planner.todayStr(),true);
+        } else {
             Calendar c=Calendar.getInstance(); c.set(Calendar.HOUR_OF_DAY,0);c.set(Calendar.MINUTE,0);c.set(Calendar.SECOND,0);c.set(Calendar.MILLISECOND,0);
             if(scheduleViewMode==1){int diff=c.get(Calendar.DAY_OF_WEEK)-Calendar.SATURDAY;if(diff<0)diff+=7;c.add(Calendar.DAY_OF_YEAR,-diff);}
             int days=scheduleViewMode==1?7:Math.max(1,planner.settings.planDays);
+            Calendar start=(Calendar)c.clone();
+            List<Planner.Session> periodSessions=new ArrayList<>();
             boolean any=false;
             for(int k=0;k<days;k++){
                 String day=String.format(Locale.US,"%04d-%02d-%02d",c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH));
+                List<Planner.Session> dl=planner.sessionsForDay(day);
+                if(!dl.isEmpty())any=true;
+                periodSessions.addAll(dl);
+                c.add(Calendar.DAY_OF_YEAR,1);
+            }
+            String periodTitle=scheduleViewMode==1?"الأسبوع":"مخصص";
+            String periodDate=String.format(Locale.US,"%04d-%02d-%02d → %04d-%02d-%02d",
+                    start.get(Calendar.YEAR),start.get(Calendar.MONTH)+1,start.get(Calendar.DAY_OF_MONTH),
+                    c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH)-1);
+            addSchedulePeriodHeader(box,periodTitle,periodDate,periodSessions);
+            c=(Calendar)start.clone();
+            for(int k=0;k<days;k++){
+                String day=String.format(Locale.US,"%04d-%02d-%02d",c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH));
                 if(scheduleViewMode==1&&weekSelectedDow>0&&c.get(Calendar.DAY_OF_WEEK)!=weekSelectedDow){c.add(Calendar.DAY_OF_YEAR,1);continue;}
-                if(!planner.sessionsForDay(day).isEmpty())any=true;
-                addScheduleDayBlock(box,day); c.add(Calendar.DAY_OF_YEAR,1);
+                addScheduleDayBlock(box,day,false);
+                c.add(Calendar.DAY_OF_YEAR,1);
             }
             if(!any&&planner.sessions.isEmpty())box.addView(emptyState("مفيش خطة لسه.\nضيف مهام واعمل خطتك."));
         }
         return sc;
     }
 
-    private void addScheduleDayBlock(LinearLayout box, String day) {
+    private void addSchedulePeriodHeader(LinearLayout box, String titleText, String dateText, List<Planner.Session> sessions) {
+        int total=sessions==null?0:sessions.size();
+        int done=0;
+        int totalMin=0, doneMin=0;
+        if(sessions!=null) for(Planner.Session s:sessions){
+            if(s==null) continue;
+            totalMin+=Math.max(0,s.durationMin);
+            if(s.done){done++;doneMin+=Math.max(0,s.durationMin);}
+        }
+        float pct=total==0?0f:(float)done/(float)total;
+        LinearLayout head=new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(0,dp(4),0,dp(2));
+
+        LinearLayout info=new LinearLayout(this);
+        info.setOrientation(LinearLayout.VERTICAL);
+        info.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        TextView title=new TextView(this);
+        title.setText(titleText);
+        title.setTextColor(TEXT);
+        title.setTextSize(20);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        info.addView(title);
+        TextView date=muted(dateText);
+        date.setTextSize(12);
+        info.addView(date);
+        TextView summary=muted(done+" من "+total+" محاضرات");
+        summary.setTextSize(15);
+        summary.setTextColor(TEXT);
+        info.addView(summary);
+        int remain=Math.max(0,totalMin-doneMin);
+        info.addView(muted("فاضل "+formatStudyDuration(remain)));
+        head.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+
+        FrameLayout gaugeWrap=new FrameLayout(this);
+        DayGaugeView gauge=new DayGaugeView(this);
+        gauge.setProgress(pct);
+        gaugeWrap.addView(gauge,new FrameLayout.LayoutParams(dp(82),dp(82)));
+        head.addView(gaugeWrap);
+        box.addView(head);
+        box.addView(space(dp(12)));
+    }
+
+    private String formatStudyDuration(int min) {
+        int h=min/60, m=min%60;
+        if(h>0 && m>0) return h+" ساعات و "+m+" دقيقة";
+        if(h>0) return h+" ساعات";
+        return m+" دقيقة";
+    }
+
+    private void addScheduleDayBlock(LinearLayout box, String day, boolean showMainCard) {
         if (box == null || day == null) return;
         List<Planner.Session> list = planner.sessionsForDay(day);
-        int doneN = 0;
-        Planner.Session current = null, next = null;
-        int nowM = Planner.nowMinOfDay();
         boolean isToday = day.equals(Planner.todayStr());
 
-        for (Planner.Session s : list) {
-            if (s.done) doneN++;
-            if (isToday && !s.done) {
-                int end = s.endMin <= s.startMin ? s.endMin + 24 * 60 : s.endMin;
-                if (s.startMin <= nowM && nowM < end) current = s;
-                else if (s.startMin > nowM && next == null) next = s;
-            }
-        }
-        if (!isToday) {
-            for (Planner.Session s : list) {
-                if (!s.done) { next = s; break; }
-            }
-        }
-
-        float pct = list.isEmpty() ? 0f : (float) doneN / (float) list.size();
-        LinearLayout dayHead = new LinearLayout(this);
-        dayHead.setOrientation(LinearLayout.HORIZONTAL);
-        dayHead.setGravity(Gravity.CENTER_VERTICAL);
-        dayHead.setPadding(0, dp(6), 0, dp(2));
-
-        LinearLayout dayLeft = new LinearLayout(this);
-        dayLeft.setOrientation(LinearLayout.VERTICAL);
-        dayLeft.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        TextView dayTitle = new TextView(this);
-        dayTitle.setText(Planner.dayLabelAr(day));
-        dayTitle.setTextColor(TEXT);
-        dayTitle.setTextSize(18);
-        dayTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        dayLeft.addView(dayTitle);
-        TextView date = muted(day);
-        date.setTextSize(12);
-        dayLeft.addView(date);
-        TextView sub = muted(doneN + " / " + list.size() + " جلسات");
-        sub.setTextSize(13);
-        dayLeft.addView(sub);
-        dayHead.addView(dayLeft, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        FrameLayout gaugeWrap = new FrameLayout(this);
-        DayGaugeView gauge = new DayGaugeView(this);
-        gauge.setProgress(pct);
-        gaugeWrap.addView(gauge, new FrameLayout.LayoutParams(dp(96), dp(96)));
-        dayHead.addView(gaugeWrap);
-        box.addView(dayHead);
-        box.addView(space(dp(10)));
-
-        final Planner.Session currentS = current;
-        final Planner.Session nextS = next;
-        LinearLayout nowCard = card();
-        nowCard.setOrientation(LinearLayout.VERTICAL);
-        if (currentS != null) {
-            TextView tag = muted("الآن");
-            tag.setTextColor(ACCENT);
-            nowCard.addView(tag);
-            TextView n = new TextView(this);
-            n.setText(currentS.taskName);
-            n.setTextColor(TEXT);
-            n.setTextSize(17);
-            n.setTypeface(Typeface.DEFAULT_BOLD);
-            nowCard.addView(n);
-            String subj = currentS.subject == null ? "" : currentS.subject;
-            nowCard.addView(muted((subj.isEmpty() ? "" : subj + " · ") + currentS.timeLabel()));
-            int leftMin = Math.max(0, (currentS.endMin <= currentS.startMin ? currentS.endMin + 24 * 60 : currentS.endMin) - nowM);
-            nowCard.addView(muted("متبقي ~" + leftMin + " د"));
-            nowCard.addView(space(dp(8)));
-            Button doneBtn = primaryBtn("تم الإنجاز");
-            doneBtn.setOnClickListener(v -> finishSessionWithChoice(currentS));
-            nowCard.addView(doneBtn, fullBtnLp());
-            if (next != null) nowCard.addView(muted("التالي: " + nextS.taskName + " · " + nextS.timeLabel()));
-        } else if (nextS != null) {
-            nowCard.addView(muted(isToday ? "القادمة" : "أول جلسة"));
-            TextView n = new TextView(this);
-            n.setText(nextS.taskName);
-            n.setTextColor(TEXT);
-            n.setTextSize(17);
-            n.setTypeface(Typeface.DEFAULT_BOLD);
-            nowCard.addView(n);
-            String subj = next.subject == null ? "" : next.subject;
-            nowCard.addView(muted((subj.isEmpty() ? "" : subj + " · ") + nextS.timeLabel()));
-            if (!nextS.done) {
-                nowCard.addView(space(dp(8)));
-                Button startBtn = primaryBtn("ابدأ");
-                startBtn.setOnClickListener(v -> openTimer(nextS));
-                nowCard.addView(startBtn, fullBtnLp());
-            }
+        if (!showMainCard) {
+            LinearLayout dayHead=new LinearLayout(this);
+            dayHead.setOrientation(LinearLayout.HORIZONTAL);
+            dayHead.setGravity(Gravity.CENTER_VERTICAL);
+            TextView dayTitle=new TextView(this);
+            dayTitle.setText(Planner.dayLabelAr(day));
+            dayTitle.setTextColor(TEXT);
+            dayTitle.setTextSize(18);
+            dayTitle.setTypeface(Typeface.DEFAULT_BOLD);
+            dayHead.addView(dayTitle,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+            dayHead.addView(muted(day),new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT));
+            box.addView(dayHead);
+            box.addView(space(dp(8)));
         } else {
-            nowCard.addView(muted(list.isEmpty() ? "مفيش جلسات لليوم" : "خلصت جلسات اليوم ✓"));
+            // كارت الجلسة الحالية لليوم فقط — الدائرة أعلاه هي دائرة الفترة كلها.
+            Planner.Session current=null,next=null;
+            int nowM=Planner.nowMinOfDay();
+            for(Planner.Session s:list) if(s!=null&&!s.done){
+                int end=s.endMin<=s.startMin?s.endMin+24*60:s.endMin;
+                if(s.startMin<=nowM&&nowM<end) current=s;
+                else if(s.startMin>nowM&&next==null) next=s;
+            }
+            if(current==null) for(Planner.Session s:list) if(s!=null&&!s.done){next=s;break;}
+            final Planner.Session currentS=current, nextS=next;
+            LinearLayout nowCard=card();
+            nowCard.setOrientation(LinearLayout.VERTICAL);
+            if(currentS!=null){
+                TextView tag=muted("الآن"); tag.setTextColor(ACCENT); nowCard.addView(tag);
+                TextView n=new TextView(this); n.setText(currentS.taskName); n.setTextColor(TEXT); n.setTextSize(20); n.setTypeface(Typeface.DEFAULT_BOLD); nowCard.addView(n);
+                String subj=currentS.subject==null?"":currentS.subject;
+                nowCard.addView(muted((subj.isEmpty()?"":subj+" · ")+currentS.timeLabel()));
+                nowCard.addView(muted("متبقي ~"+Math.max(0,(currentS.endMin<=currentS.startMin?currentS.endMin+24*60:currentS.endMin)-nowM)+" د"));
+                nowCard.addView(space(dp(8)));
+                Button doneBtn=primaryBtn("تم الإنجاز"); doneBtn.setOnClickListener(v->finishSessionWithChoice(currentS)); nowCard.addView(doneBtn,fullBtnLp());
+            } else if(nextS!=null){
+                nowCard.addView(muted("القادمة"));
+                TextView n=new TextView(this); n.setText(nextS.taskName); n.setTextColor(TEXT); n.setTextSize(20); n.setTypeface(Typeface.DEFAULT_BOLD); nowCard.addView(n);
+                String subj=nextS.subject==null?"":nextS.subject;
+                nowCard.addView(muted((subj.isEmpty()?"":subj+" · ")+nextS.timeLabel()));
+                Button startBtn=primaryBtn("ابدأ"); startBtn.setOnClickListener(v->openTimer(nextS)); nowCard.addView(startBtn,fullBtnLp());
+            } else {
+                nowCard.addView(muted(list.isEmpty()?"مفيش جلسات لليوم":"خلصت جلسات اليوم ✓"));
+            }
+            box.addView(nowCard);
+            box.addView(space(dp(10)));
+            box.addView(sectionHeader("لاحقًا"));
+            box.addView(space(dp(6)));
         }
-        box.addView(nowCard);
-        box.addView(space(dp(10)));
-        box.addView(sectionHeader(isToday ? "باقي اليوم" : "جلسات اليوم"));
-        box.addView(space(dp(6)));
 
-        LinearLayout dayZone = new LinearLayout(this);
+        LinearLayout dayZone=new LinearLayout(this);
         dayZone.setOrientation(LinearLayout.VERTICAL);
         dayZone.setTag(day);
-        GradientDrawable zbg = new GradientDrawable();
-        zbg.setColor(0x00000000);
-        zbg.setCornerRadius(dp(12));
-        zbg.setStroke(dp(1), 0x00000000);
-        dayZone.setBackground(zbg);
-
-        if (list.isEmpty()) {
-            dayZone.addView(emptyState("مفيش جلسات في اليوم ده"));
-        } else {
-            List<Planner.Session> ordered = new ArrayList<>(list);
-            Collections.sort(ordered, (a, b) -> Integer.compare(a.startMin, b.startMin));
-            for (Planner.Session s : ordered) dayZone.addView(sessionCard(s));
+        if(list.isEmpty()) dayZone.addView(emptyState("مفيش جلسات في اليوم ده"));
+        else {
+            List<Planner.Session> ordered=new ArrayList<>(list);
+            Collections.sort(ordered,(a,b)->Integer.compare(a.startMin,b.startMin));
+            for(Planner.Session s:ordered){
+                if(showMainCard && s!=null){
+                    // الجلسة الحالية تُعرض مرة واحدة في الكارت الكبير؛ الباقي يظل قابلًا للفتح.
+                    int nowM=Planner.nowMinOfDay();
+                    boolean current=!s.done&&isToday&&s.startMin<=nowM&&nowM<(s.endMin<=s.startMin?s.endMin+24*60:s.endMin);
+                    if(current) continue;
+                }
+                dayZone.addView(sessionCard(s));
+            }
         }
         box.addView(dayZone);
-        dayDropZones.put(day, dayZone);
-        attachDayDropListener(dayZone, day);
-        box.addView(space(dp(12)));
+        dayDropZones.put(day,dayZone);
+        attachDayDropListener(dayZone,day);
+        box.addView(space(dp(14)));
     }
 
     /** simple horizontal scroll container */
