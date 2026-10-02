@@ -5094,72 +5094,169 @@ public class MainActivity extends Activity {
     }
 
     private View buildExamsScreen() {
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(BG);
+        root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
         ScrollView sc = new ScrollView(this);
+        sc.setFillViewport(true);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18), dp(18), dp(18), dp(28));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        box.setPadding(dp(18), dp(18), dp(18), dp(96));
         sc.addView(box);
-        box.addView(title("الامتحانات"));
-        box.addView(muted("الامتحان مش مجرد موعد؛ بيغيّر أولوية المادة مؤقتًا."));
-        box.addView(space(dp(10)));
-        Button add = primaryBtn("إضافة امتحان");
-        add.setOnClickListener(v -> showExamDialog(null));
-        box.addView(add, fullBtnLp());
-        box.addView(space(dp(12)));
+        root.addView(sc, new FrameLayout.LayoutParams(-1, -1));
+
+        TextView h = title("الامتحانات");
+        h.setTextSize(24);
+        box.addView(h);
+        box.addView(muted("تابع مواعيد امتحاناتك ومستوى التحضير لكل مادة."));
+        box.addView(space(dp(14)));
+
         if (planner.exams.isEmpty()) {
             box.addView(emptyState("لا توجد امتحانات مضافة.\nضيف امتحان عشان الخطة تراعيه."));
-            return sc;
-        }
-        Calendar today = Calendar.getInstance();
-        today.set(Calendar.HOUR_OF_DAY, 0);
-        today.set(Calendar.MINUTE, 0);
-        today.set(Calendar.SECOND, 0);
-        today.set(Calendar.MILLISECOND, 0);
-        for (Planner.Exam e : planner.exams) {
-            LinearLayout card = card();
-            card.setOrientation(LinearLayout.VERTICAL);
-            TextView name = new TextView(this);
-            name.setText((e.title == null || e.title.isEmpty()) ? e.subject : e.title);
-            name.setTextColor(e.done ? OK : TEXT);
-            name.setTextSize(16);
-            name.setTypeface(Typeface.DEFAULT_BOLD);
-            card.addView(name);
-            int days = 999;
-            try {
-                Calendar c = Planner.dayCal(e.day);
-                days = (int) ((c.getTimeInMillis() - today.getTimeInMillis()) / 86400000L);
-            } catch (Exception ignored) {}
-            String when = days < 0 ? "عدّى" : (days == 0 ? "النهاردة" : "بعد " + days + " يوم");
-            card.addView(muted(e.subject + "  ·  " + when));
-            card.addView(muted("التحضير: " + e.prepLevel + "%   " + (e.topics == null ? "" : e.topics)));
-            if (!e.done && days >= 0 && days <= 7) {
-                card.addView(space(dp(4)));
-                card.addView(muted("هيأثر على الجدول كأولوية مؤقتة لـ" + e.subject));
+        } else {
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+
+            for (Planner.Exam e : planner.exams) {
+                LinearLayout examCard = card();
+                examCard.setOrientation(LinearLayout.VERTICAL);
+                examCard.setPadding(dp(14), dp(14), dp(14), dp(14));
+                examCard.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+                LinearLayout head = new LinearLayout(this);
+                head.setOrientation(LinearLayout.HORIZONTAL);
+                head.setGravity(Gravity.CENTER_VERTICAL);
+                head.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+                head.addView(subjectIcon(e.subject), new LinearLayout.LayoutParams(dp(46), dp(46)));
+
+                LinearLayout titles = new LinearLayout(this);
+                titles.setOrientation(LinearLayout.VERTICAL);
+                titles.setPadding(dp(10), 0, dp(4), 0);
+                TextView subjectTv = new TextView(this);
+                subjectTv.setText(e.subject == null ? "" : e.subject);
+                subjectTv.setTextColor(ACCENT);
+                subjectTv.setTextSize(12);
+                subjectTv.setTypeface(Typeface.DEFAULT_BOLD);
+                titles.addView(subjectTv);
+
+                TextView examName = new TextView(this);
+                examName.setText((e.title == null || e.title.isEmpty()) ? "امتحان" : e.title);
+                examName.setTextColor(TEXT);
+                examName.setTextSize(17);
+                examName.setTypeface(Typeface.DEFAULT_BOLD);
+                titles.addView(examName);
+                head.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
+
+                TextView arrow = new TextView(this);
+                arrow.setText("⌄");
+                arrow.setTextColor(MUTED);
+                arrow.setTextSize(22);
+                head.addView(arrow, new LinearLayout.LayoutParams(dp(28), dp(46)));
+                examCard.addView(head);
+                examCard.addView(space(dp(10)));
+
+                int days = 999;
+                try {
+                    Calendar ec = Planner.dayCal(e.day);
+                    days = (int)((ec.getTimeInMillis() - today.getTimeInMillis()) / 86400000L);
+                } catch (Exception ignored) {}
+                TextView whenTv = muted(days < 0 ? "عدّى" : (days == 0 ? "النهاردة" : "بعد " + days + " يوم"));
+                whenTv.setTextColor(ACCENT);
+                whenTv.setTypeface(Typeface.DEFAULT_BOLD);
+                examCard.addView(whenTv);
+
+                TextView prepLabel = muted("مستوى التحضير  " + e.prepLevel + "%");
+                prepLabel.setPadding(0, dp(8), 0, 0);
+                examCard.addView(prepLabel);
+
+                ProgressBar prepBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+                prepBar.setMax(100);
+                prepBar.setProgress(Math.max(0, Math.min(100, e.prepLevel)));
+                prepBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+                prepBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(CARD2));
+                examCard.addView(prepBar, new LinearLayout.LayoutParams(-1, dp(18)));
+
+                LinearLayout details = new LinearLayout(this);
+                details.setOrientation(LinearLayout.VERTICAL);
+                details.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                details.setVisibility(View.GONE);
+                details.setPadding(0, dp(10), 0, 0);
+                details.addView(muted("تاريخ الامتحان: " + (e.day == null ? "—" : e.day)));
+                details.addView(muted("الفصول / الأجزاء: " + ((e.topics == null || e.topics.trim().isEmpty()) ? "—" : e.topics)));
+                if (!e.done && days >= 0 && days <= 7) {
+                    TextView p = muted("هيأثر على الجدول كأولوية مؤقتة لـ" + e.subject);
+                    p.setTextColor(ACCENT);
+                    details.addView(p);
+                }
+
+                LinearLayout actions = new LinearLayout(this);
+                actions.setOrientation(LinearLayout.HORIZONTAL);
+                actions.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                TextView ed = link("تعديل");
+                ed.setOnClickListener(v -> showExamDialog(e));
+                actions.addView(ed);
+                actions.addView(space(dp(12)));
+                TextView del = link("حذف");
+                del.setTextColor(DANGER);
+                del.setOnClickListener(v -> { planner.exams.remove(e); planner.save(); showTab(3); });
+                actions.addView(del);
+                details.addView(space(dp(4)));
+                details.addView(actions);
+                examCard.addView(details);
+
+                View.OnClickListener toggle = v -> {
+                    boolean open = details.getVisibility() == View.VISIBLE;
+                    details.setVisibility(open ? View.GONE : View.VISIBLE);
+                    arrow.setText(open ? "⌄" : "⌃");
+                };
+                head.setOnClickListener(toggle);
+                examCard.setOnClickListener(v -> toggle.onClick(v));
+
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
+                cp.bottomMargin = dp(10);
+                examCard.setLayoutParams(cp);
+                box.addView(examCard);
             }
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, dp(8), 0, 0);
-            TextView ed = link("تعديل");
-            ed.setOnClickListener(v -> showExamDialog(e));
-            row.addView(ed);
-            row.addView(space(dp(12)));
-            TextView del = link("حذف");
-            del.setTextColor(DANGER);
-            del.setOnClickListener(v -> {
-                planner.exams.remove(e);
-                planner.save();
-                showTab(3);
-            });
-            row.addView(del);
-            card.addView(row);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = dp(10);
-            card.setLayoutParams(lp);
-            box.addView(card);
         }
 
-        return sc;
+        Button add = primaryBtn("＋  إضافة امتحان");
+        add.setOnClickListener(v -> showExamDialog(null));
+        FrameLayout.LayoutParams ap = new FrameLayout.LayoutParams(-1, dp(54), Gravity.BOTTOM);
+        ap.setMargins(dp(18), 0, dp(18), dp(14));
+        root.addView(add, ap);
+        return root;
+    }
+
+    private TextView subjectIcon(String subject) {
+        TextView v = new TextView(this);
+        v.setText(subjectSymbol(subject));
+        v.setTextColor(ACCENT);
+        v.setTextSize(19);
+        v.setTypeface(Typeface.DEFAULT_BOLD);
+        v.setGravity(Gravity.CENTER);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(ACCENT_SOFT);
+        bg.setCornerRadius(dp(12));
+        bg.setStroke(dp(1), ACCENT);
+        v.setBackground(bg);
+        return v;
+    }
+
+    private String subjectSymbol(String subject) {
+        String s = subject == null ? "" : subject.toLowerCase(Locale.ROOT);
+        if (s.contains("عرب")) return "ع";
+        if (s.contains("انجل") || s.contains("english") || s.equals("en")) return "Aa";
+        if (s.contains("كيم") || s.contains("chem")) return "⚗";
+        if (s.contains("أحي") || s.contains("احي") || s.contains("bio")) return "◉";
+        if (s.contains("فيز") || s.contains("phys")) return "⌁";
+        if (s.contains("رياض") || s.contains("math")) return "π";
+        return "•";
     }
 
     private void showExamDialog(Planner.Exam existing) {
