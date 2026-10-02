@@ -4141,34 +4141,39 @@ public class MainActivity extends Activity {
         hero.setOrientation(LinearLayout.HORIZONTAL);
         hero.setGravity(Gravity.CENTER_VERTICAL);
         hero.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        hero.setPadding(dp(14), dp(18), dp(14), dp(18));
+        hero.setPadding(dp(14), dp(14), dp(14), dp(14));
 
         StatsGaugeView gauge = new StatsGaugeView(this);
         gauge.setPercent(pct);
-        hero.addView(gauge, new LinearLayout.LayoutParams(0, dp(164), 1.05f));
+        LinearLayout.LayoutParams gaugeLp = new LinearLayout.LayoutParams(dp(154), dp(176));
+        gaugeLp.gravity = Gravity.CENTER_VERTICAL;
+        hero.addView(gauge, gaugeLp);
 
         LinearLayout phraseBox = new LinearLayout(this);
         phraseBox.setOrientation(LinearLayout.VERTICAL);
-        phraseBox.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        phraseBox.setGravity(Gravity.CENTER);
         phraseBox.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        phraseBox.setPadding(dp(10), 0, dp(6), 0);
+        phraseBox.setPadding(dp(12), 0, dp(12), 0);
+
         TextView phrase = new TextView(this);
         phrase.setText(statsPhrase(pct));
         phrase.setTextColor(ACCENT);
-        phrase.setTextSize(19);
+        phrase.setTextSize(20);
         phrase.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        phrase.setGravity(Gravity.RIGHT);
-        phrase.setLineSpacing(dp(3), 1.0f);
-        phraseBox.addView(phrase);
+        phrase.setGravity(Gravity.CENTER);
+        phrase.setLineSpacing(dp(3), 1.05f);
+        phraseBox.addView(phrase, new LinearLayout.LayoutParams(-1, -2));
+
         TextView phraseHint = new TextView(this);
         phraseHint.setText(pct == 0 ? "كل إنجاز بيبدأ بخطوة" : pct >= 90 ? "خطوات بسيطة وتكمل خطتك" : "كمّل بنفس الوتيرة، كل خطوة بتفرق");
         phraseHint.setTextColor(MUTED);
         phraseHint.setTextSize(12);
-        phraseHint.setGravity(Gravity.RIGHT);
+        phraseHint.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(-1, -2);
-        hintLp.topMargin = dp(8);
+        hintLp.topMargin = dp(9);
         phraseBox.addView(phraseHint, hintLp);
-        hero.addView(phraseBox, new LinearLayout.LayoutParams(0, dp(164), 1f));
+
+        hero.addView(phraseBox, new LinearLayout.LayoutParams(0, dp(176), 1f));
         box.addView(hero);
         box.addView(space(dp(10)));
 
@@ -4181,24 +4186,36 @@ public class MainActivity extends Activity {
         three.setOrientation(LinearLayout.HORIZONTAL);
         three.setGravity(Gravity.CENTER);
         three.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        three.addView(statMetricCard("⏱", studyHours + " س", "ساعات المذاكرة"), new LinearLayout.LayoutParams(0, dp(92), 1f));
-        three.addView(spaceWidth(dp(7)));
-        three.addView(statMetricCard("✓", String.valueOf(doneTasksCount()), "المهام المكتملة"), new LinearLayout.LayoutParams(0, dp(92), 1f));
-        three.addView(spaceWidth(dp(7)));
-        three.addView(statMetricCard("○", String.valueOf(remainingTasks), "المهام المتبقية"), new LinearLayout.LayoutParams(0, dp(92), 1f));
+
+        LinearLayout.LayoutParams metricLp = new LinearLayout.LayoutParams(0, dp(104), 1f);
+        metricLp.setMargins(dp(2), 0, dp(2), 0);
+        three.addView(statMetricCard("⏱", studyHours + " س", "ساعات المذاكرة"), metricLp);
+        three.addView(spaceWidth(dp(5)));
+        LinearLayout.LayoutParams metricLp2 = new LinearLayout.LayoutParams(0, dp(104), 1f);
+        metricLp2.setMargins(dp(2), 0, dp(2), 0);
+        three.addView(statMetricCard("✓", String.valueOf(doneTasksCount()), "المهام المكتملة"), metricLp2);
+        three.addView(spaceWidth(dp(5)));
+        LinearLayout.LayoutParams metricLp3 = new LinearLayout.LayoutParams(0, dp(104), 1f);
+        metricLp3.setMargins(dp(2), 0, dp(2), 0);
+        three.addView(statMetricCard("○", String.valueOf(remainingTasks), "المهام المتبقية"), metricLp3);
         box.addView(three);
         box.addView(space(dp(12)));
 
         LinearLayout weekCard = card();
         weekCard.setOrientation(LinearLayout.VERTICAL);
-        weekCard.addView(sectionHeader("الإنجاز خلال آخر 7 أيام"));
-        weekCard.addView(muted("كلما زاد إنجازك، زاد وضوح العمود."));
-        weekCard.addView(space(dp(8)));
+        weekCard.setPadding(dp(14), dp(14), dp(14), dp(12));
+        TextView weekTitle = sectionHeader("الإنجاز خلال آخر 7 أيام");
+        weekCard.addView(weekTitle);
+        TextView weekHint = muted("كل عمود 10 أجزاء — الجزء المضيء يوضح نسبة إنجاز اليوم.");
+        weekCard.addView(weekHint);
+        box.addView(space(dp(0)));
 
         LinearLayout chart = new LinearLayout(this);
         chart.setOrientation(LinearLayout.HORIZONTAL);
         chart.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         chart.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        chart.setPadding(dp(4), dp(12), dp(4), dp(2));
+
         Calendar base = Calendar.getInstance();
         base.set(Calendar.HOUR_OF_DAY, 0);
         base.set(Calendar.MINUTE, 0);
@@ -4210,44 +4227,44 @@ public class MainActivity extends Activity {
             d.add(Calendar.DAY_OF_YEAR, -i);
             String ds = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(d.getTime());
             float rp = Math.max(0f, Math.min(1f, sessionCompletionRatio(ds, ds)));
+            int doneSegments = Math.max(0, Math.min(10, Math.round(rp * 10f)));
 
             LinearLayout col = new LinearLayout(this);
             col.setOrientation(LinearLayout.VERTICAL);
             col.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+
             TextView val = muted(Math.round(rp * 100f) + "%");
             val.setTextSize(11);
+            val.setTextColor(ACCENT);
+            val.setTypeface(Typeface.DEFAULT_BOLD);
             val.setGravity(Gravity.CENTER);
             col.addView(val);
-            View track = new View(this);
-            GradientDrawable trackBg = new GradientDrawable();
-            trackBg.setColor(CARD2);
-            trackBg.setCornerRadius(dp(8));
-            track.setBackground(trackBg);
-            LinearLayout.LayoutParams trackLp = new LinearLayout.LayoutParams(dp(20), dp(78));
-            trackLp.topMargin = dp(5);
-            trackLp.bottomMargin = dp(6);
-            col.addView(track, trackLp);
-            View bar = new View(this);
-            GradientDrawable barBg = new GradientDrawable();
-            barBg.setColor(rp > 0f ? withAlpha(ACCENT, 70 + Math.round(185 * rp)) : withAlpha(ACCENT, 28));
-            barBg.setCornerRadius(dp(8));
-            bar.setBackground(barBg);
-            FrameLayout barFrame = new FrameLayout(this);
-            FrameLayout.LayoutParams barLp = new FrameLayout.LayoutParams(-1, Math.max(dp(4), Math.round(dp(78) * rp)), Gravity.BOTTOM);
-            barFrame.addView(bar, barLp);
-            track.setBackground(trackBg);
-            // Overlay the progress bar within a fixed-height track.
-            track.setForeground(null);
-            FrameLayout barHolder = new FrameLayout(this);
-            barHolder.setBackground(trackBg);
-            barHolder.addView(bar, new FrameLayout.LayoutParams(-1, Math.max(dp(4), Math.round(dp(78) * rp)), Gravity.BOTTOM));
-            col.removeView(track);
-            col.addView(barHolder, trackLp);
+
+            LinearLayout segments = new LinearLayout(this);
+            segments.setOrientation(LinearLayout.VERTICAL);
+            segments.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            segments.setPadding(0, dp(5), 0, dp(6));
+
+            for (int seg = 9; seg >= 0; seg--) {
+                View part = new View(this);
+                GradientDrawable partBg = new GradientDrawable();
+                partBg.setCornerRadius(dp(4));
+                boolean active = seg < doneSegments;
+                partBg.setColor(active ? ACCENT : withAlpha(ACCENT, 24));
+                part.setBackground(partBg);
+                LinearLayout.LayoutParams partLp = new LinearLayout.LayoutParams(dp(28), dp(7));
+                if (seg != 0) partLp.bottomMargin = dp(3);
+                segments.addView(part, partLp);
+            }
+            col.addView(segments, new LinearLayout.LayoutParams(-1, dp(101)));
+
             TextView dn = muted(new SimpleDateFormat("EEE", new Locale("ar")).format(d.getTime()));
             dn.setTextSize(10);
+            dn.setTextColor(MUTED);
             dn.setGravity(Gravity.CENTER);
             col.addView(dn);
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, dp(112), 1f);
+
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, dp(132), 1f);
             cp.setMargins(dp(2), 0, dp(2), 0);
             chart.addView(col, cp);
         }
@@ -4268,7 +4285,8 @@ public class MainActivity extends Activity {
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-                row.addView(subjectIcon(e.getKey()), new LinearLayout.LayoutParams(dp(42), dp(42)));
+                row.setPadding(dp(12), dp(10), dp(12), dp(10));
+                row.addView(subjectIcon(e.getKey()), new LinearLayout.LayoutParams(dp(44), dp(44)));
                 LinearLayout info = new LinearLayout(this);
                 info.setOrientation(LinearLayout.VERTICAL);
                 info.setPadding(dp(10), 0, 0, 0);
@@ -4278,7 +4296,8 @@ public class MainActivity extends Activity {
                 sn.setTextSize(14);
                 sn.setTypeface(Typeface.DEFAULT_BOLD);
                 info.addView(sn);
-                info.addView(muted(d + " / " + tot + " د  ·  " + p + "%"));
+                TextView detail = muted(d + " / " + tot + " د  ·  " + p + "%");
+                info.addView(detail);
                 ProgressBar pb = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
                 pb.setMax(100);
                 pb.setProgress(p);
@@ -4295,32 +4314,7 @@ public class MainActivity extends Activity {
         return sc;
     }
 
-    private View statMetricCard(String icon, String value, String labelText) {
-        LinearLayout outer = card();
-        outer.setOrientation(LinearLayout.VERTICAL);
-        outer.setGravity(Gravity.CENTER);
-        outer.setPadding(dp(4), dp(8), dp(4), dp(8));
-        outer.addView(statMetric(icon, value, labelText), new LinearLayout.LayoutParams(-1, -1));
-        return outer;
-    }
-
-    private View spaceWidth(int width) {
-        View v = new View(this);
-        v.setLayoutParams(new LinearLayout.LayoutParams(width, 1));
-        return v;
-    }
-
-    private int withAlpha(int color, int alpha) {
-        return (color & 0x00FFFFFF) | (Math.max(0, Math.min(255, alpha)) << 24);
-    }
-
-    private int doneTasksCount() {
-        int n = 0;
-        for (Planner.Task t : planner.tasks) if (t.done) n++;
-        return n;
-    }
-
-    private String statsPhrase(int pct) {
+private String statsPhrase(int pct) {
         if (pct < 10) return "🌱 لسه البداية";
         if (pct < 20) return "💪 بدأنا نتحرك";
         if (pct < 30) return "🔥 بداية حلوة";
@@ -5286,39 +5280,6 @@ private View buildRoutineScreen() {
                 examCard.setPadding(dp(14), dp(14), dp(14), dp(14));
                 examCard.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
-                LinearLayout head = new LinearLayout(this);
-                head.setOrientation(LinearLayout.HORIZONTAL);
-                head.setGravity(Gravity.CENTER_VERTICAL);
-                head.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-
-                head.addView(subjectIcon(e.subject), new LinearLayout.LayoutParams(dp(46), dp(46)));
-
-                LinearLayout titles = new LinearLayout(this);
-                titles.setOrientation(LinearLayout.VERTICAL);
-                titles.setPadding(dp(10), 0, dp(4), 0);
-                TextView subjectTv = new TextView(this);
-                subjectTv.setText(e.subject == null ? "" : e.subject);
-                subjectTv.setTextColor(ACCENT);
-                subjectTv.setTextSize(12);
-                subjectTv.setTypeface(Typeface.DEFAULT_BOLD);
-                titles.addView(subjectTv);
-
-                TextView examName = new TextView(this);
-                examName.setText((e.title == null || e.title.isEmpty()) ? "امتحان" : e.title);
-                examName.setTextColor(TEXT);
-                examName.setTextSize(17);
-                examName.setTypeface(Typeface.DEFAULT_BOLD);
-                titles.addView(examName);
-                head.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
-
-                TextView arrow = new TextView(this);
-                arrow.setText("⌄");
-                arrow.setTextColor(MUTED);
-                arrow.setTextSize(22);
-                head.addView(arrow, new LinearLayout.LayoutParams(dp(28), dp(46)));
-                examCard.addView(head);
-                examCard.addView(space(dp(10)));
-
                 int days = 999;
                 try {
                     Calendar ec = Planner.dayCal(e.day);
@@ -5326,8 +5287,42 @@ private View buildRoutineScreen() {
                 } catch (Exception ignored) {}
                 TextView whenTv = muted(days < 0 ? "عدّى" : (days == 0 ? "النهاردة" : "بعد " + days + " يوم"));
                 whenTv.setTextColor(ACCENT);
+                whenTv.setTextSize(14);
                 whenTv.setTypeface(Typeface.DEFAULT_BOLD);
-                examCard.addView(whenTv);
+                whenTv.setGravity(Gravity.CENTER);
+                
+                LinearLayout head = new LinearLayout(this);
+                head.setOrientation(LinearLayout.HORIZONTAL);
+                head.setGravity(Gravity.CENTER_VERTICAL);
+                head.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                head.addView(subjectIcon(e.subject), new LinearLayout.LayoutParams(dp(50), dp(50)));
+
+                LinearLayout titles = new LinearLayout(this);
+                titles.setOrientation(LinearLayout.VERTICAL);
+                titles.setGravity(Gravity.CENTER_VERTICAL);
+                titles.setPadding(dp(10), 0, dp(8), 0);
+                TextView subjectTv = new TextView(this);
+                subjectTv.setText(e.subject == null ? "" : e.subject);
+                subjectTv.setTextColor(ACCENT);
+                subjectTv.setTextSize(15);
+                subjectTv.setTypeface(Typeface.DEFAULT_BOLD);
+                titles.addView(subjectTv);
+
+                TextView examName = new TextView(this);
+                examName.setText((e.title == null || e.title.isEmpty()) ? "امتحان" : e.title);
+                examName.setTextColor(TEXT);
+                examName.setTextSize(19);
+                examName.setTypeface(Typeface.DEFAULT_BOLD);
+                titles.addView(examName);
+                head.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
+
+                LinearLayout leftTime = new LinearLayout(this);
+                leftTime.setGravity(Gravity.CENTER);
+                leftTime.setPadding(dp(8), 0, dp(4), 0);
+                leftTime.addView(whenTv, new LinearLayout.LayoutParams(dp(82), dp(44)));
+                head.addView(leftTime, new LinearLayout.LayoutParams(dp(92), dp(54)));
+                examCard.addView(head);
+                examCard.addView(space(dp(10)));
 
                 TextView prepLabel = muted("مستوى التحضير  " + e.prepLevel + "%");
                 prepLabel.setPadding(0, dp(8), 0, 0);
@@ -5371,7 +5366,6 @@ private View buildRoutineScreen() {
                 View.OnClickListener toggle = v -> {
                     boolean open = details.getVisibility() == View.VISIBLE;
                     details.setVisibility(open ? View.GONE : View.VISIBLE);
-                    arrow.setText(open ? "⌄" : "⌃");
                 };
                 head.setOnClickListener(toggle);
                 examCard.setOnClickListener(v -> toggle.onClick(v));
@@ -5391,54 +5385,133 @@ private View buildRoutineScreen() {
         return root;
     }
 
-    private TextView subjectIcon(String subject) {
-        TextView v = new TextView(this);
-        v.setText(subjectSymbol(subject));
-        v.setTextColor(ACCENT);
-        v.setTextSize(19);
-        v.setTypeface(Typeface.DEFAULT_BOLD);
-        v.setGravity(Gravity.CENTER);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(ACCENT_SOFT);
-        bg.setCornerRadius(dp(12));
-        bg.setStroke(dp(1), ACCENT);
-        v.setBackground(bg);
-        return v;
+    private View subjectIcon(String subject) {
+        final String kind = subjectSymbol(subject);
+        return new View(this) {
+            final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+            {
+                stroke.setStyle(Paint.Style.STROKE);
+                stroke.setStrokeWidth(dp(2));
+                stroke.setStrokeCap(Paint.Cap.ROUND);
+                stroke.setStrokeJoin(Paint.Join.ROUND);
+            }
+            @Override protected void onDraw(Canvas c) {
+                super.onDraw(c);
+                float w = getWidth(), h = getHeight();
+                float cx = w / 2f, cy = h / 2f;
+                GradientDrawable bg = new GradientDrawable();
+                bg.setColor(ACCENT_SOFT);
+                bg.setCornerRadius(dp(13));
+                bg.setStroke(dp(1), withAlpha(ACCENT, 170));
+                bg.setBounds(0, 0, getWidth(), getHeight());
+                bg.draw(c);
+
+                p.setColor(ACCENT);
+                p.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+                p.setTextAlign(Paint.Align.CENTER);
+                stroke.setColor(ACCENT);
+
+                if ("ع".equals(kind)) {
+                    p.setTextSize(dp(28));
+                    c.drawText("ع", cx, cy - (p.ascent()+p.descent())/2f, p);
+                } else if ("Aa".equals(kind)) {
+                    p.setTextSize(dp(21));
+                    c.drawText("A", cx - dp(6), cy + dp(7), p);
+                    p.setTextSize(dp(15));
+                    c.drawText("a", cx + dp(8), cy + dp(7), p);
+                } else if ("chem".equals(kind)) {
+                    Path q = new Path();
+                    q.moveTo(cx-dp(6), cy-dp(11)); q.lineTo(cx+dp(6), cy-dp(11));
+                    q.moveTo(cx-dp(3), cy-dp(11)); q.lineTo(cx-dp(3), cy-dp(2));
+                    q.lineTo(cx-dp(11), cy+dp(10)); q.quadTo(cx, cy+dp(16), cx+dp(11), cy+dp(10));
+                    q.lineTo(cx+dp(3), cy-dp(2)); q.lineTo(cx+dp(3), cy-dp(11));
+                    c.drawPath(q, stroke);
+                    c.drawLine(cx-dp(6), cy+dp(5), cx+dp(6), cy+dp(5), stroke);
+                } else if ("bio".equals(kind)) {
+                    c.drawCircle(cx, cy, dp(11), stroke);
+                    c.drawCircle(cx-dp(3), cy-dp(2), dp(3), stroke);
+                    c.drawCircle(cx+dp(4), cy+dp(3), dp(2.5f), stroke);
+                    c.drawLine(cx-dp(9), cy+dp(7), cx+dp(8), cy-dp(8), stroke);
+                } else if ("phys".equals(kind)) {
+                    c.drawLine(cx-dp(9), cy-dp(11), cx+dp(9), cy-dp(11), stroke);
+                    c.drawLine(cx-dp(5), cy-dp(11), cx-dp(5), cy-dp(4), stroke);
+                    c.drawLine(cx+dp(5), cy-dp(11), cx+dp(5), cy-dp(4), stroke);
+                    c.drawLine(cx-dp(5), cy-dp(4), cx, cy+dp(9), stroke);
+                    c.drawCircle(cx, cy+dp(11), dp(2.5f), p);
+                } else if ("math".equals(kind)) {
+                    p.setTextSize(dp(30));
+                    c.drawText("π", cx, cy - (p.ascent()+p.descent())/2f, p);
+                } else {
+                    p.setTextSize(dp(24));
+                    c.drawText("•", cx, cy - (p.ascent()+p.descent())/2f, p);
+                }
+            }
+        };
     }
 
     private String subjectSymbol(String subject) {
         String s = subject == null ? "" : subject.toLowerCase(Locale.ROOT);
         if (s.contains("عرب")) return "ع";
         if (s.contains("انجل") || s.contains("english") || s.equals("en")) return "Aa";
-        if (s.contains("كيم") || s.contains("chem")) return "⚗";
-        if (s.contains("أحي") || s.contains("احي") || s.contains("bio")) return "◉";
-        if (s.contains("فيز") || s.contains("phys")) return "⌁";
-        if (s.contains("رياض") || s.contains("math")) return "π";
-        return "•";
+        if (s.contains("كيم") || s.contains("chem")) return "chem";
+        if (s.contains("أحي") || s.contains("احي") || s.contains("bio")) return "bio";
+        if (s.contains("فيز") || s.contains("phys")) return "phys";
+        if (s.contains("رياض") || s.contains("math")) return "math";
+        return "other";
     }
 
-    private void showExamDialog(Planner.Exam existing) {
+private TextView examLabel(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextColor(ACCENT);
+        t.setTextSize(13.5f);
+        t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setGravity(Gravity.RIGHT);
+        t.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        return t;
+    }
+
+    private TextView examChoice(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextColor(ACCENT);
+        t.setTextSize(13);
+        t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        t.setSingleLine(true);
+        t.setPadding(dp(14), dp(11), dp(14), dp(11));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(ACCENT_SOFT);
+        bg.setCornerRadius(dp(RADIUS_SM));
+        bg.setStroke(dp(1), withAlpha(ACCENT, 150));
+        t.setBackground(bg);
+        t.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        return t;
+    }
+
+private void showExamDialog(Planner.Exam existing) {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(18), dp(12), dp(18), dp(10));
         form.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
         final String[] subjectHold = {existing != null && existing.subject != null ? existing.subject : ""};
-        form.addView(label("المادة"));
-        TextView subject = chip(subjectHold[0].isEmpty() ? "اختار المادة ▾" : subjectHold[0], true);
+        form.addView(examLabel("المادة"));
+        TextView subject = examChoice(subjectHold[0].isEmpty() ? "اختار المادة ▾" : subjectHold[0]);
         form.addView(subject);
 
         form.addView(space(dp(8)));
-        form.addView(label("اسم الامتحان"));
+        form.addView(examLabel("اسم الامتحان"));
         EditText title = field();
-        title.setHint("مثال: امتحان منتصف الترم");
+        title.setHint("مثال: امتحان منتصف الترم");\n        title.setHintTextColor(withAlpha(ACCENT, 210));
         if (existing != null && existing.title != null) title.setText(existing.title);
         form.addView(title);
 
         form.addView(space(dp(8)));
-        form.addView(label("تاريخ الامتحان"));
+        form.addView(examLabel("تاريخ الامتحان"));
         final String[] day = {existing != null && existing.day != null ? existing.day : ""};
-        TextView dayTv = chip(day[0].isEmpty() ? "اختار التاريخ ▾" : day[0], true);
+        TextView dayTv = examChoice(day[0].isEmpty() ? "اختار التاريخ ▾" : day[0]);
         dayTv.setOnClickListener(v -> {
             Calendar cal = Calendar.getInstance();
             new DatePickerDialog(this, (vv, y, m, d) -> {
@@ -5459,9 +5532,9 @@ private View buildRoutineScreen() {
         moreBox.setVisibility(View.GONE);
         moreBox.setPadding(0, dp(8), 0, 0);
 
-        moreBox.addView(label("الفصول / الأجزاء"));
+        moreBox.addView(examLabel("الفصول / الأجزاء"));
         EditText topics = field();
-        topics.setHint("اختياري");
+        topics.setHint("اختياري");\n        topics.setHintTextColor(withAlpha(ACCENT, 210));
         if (existing != null && existing.topics != null) topics.setText(existing.topics);
         moreBox.addView(topics);
 
@@ -5483,7 +5556,7 @@ private View buildRoutineScreen() {
         moreBox.addView(prepBar);
 
         moreBox.addView(space(dp(8)));
-        moreBox.addView(label("آخر محاضرة داخلة في الامتحان"));
+        moreBox.addView(examLabel("آخر محاضرة داخلة في الامتحان"));
         moreBox.addView(muted("مثال: محاضرة 7 → الامتحان يشمل 1…7."));
         final String[] lastLecId = {existing != null && existing.lastLectureTaskId != null ? existing.lastLectureTaskId : ""};
         String lastLecLabel = "بدون تحديد ▾";
@@ -5494,7 +5567,7 @@ private View buildRoutineScreen() {
                 lastLecLabel = (n >= 0 ? ("محاضرة " + n + " — ") : "") + (lt.name == null ? "?" : lt.name);
             }
         }
-        TextView lastLecTv = chip(lastLecLabel, true);
+        TextView lastLecTv = examChoice(lastLecLabel);
         lastLecTv.setOnClickListener(v -> {
             String sub = subjectHold[0] == null ? "" : subjectHold[0].trim();
             if (sub.isEmpty()) {
