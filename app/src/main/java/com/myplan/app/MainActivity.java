@@ -4129,7 +4129,9 @@ public class MainActivity extends Activity {
         box.setPadding(dp(16), dp(16), dp(16), dp(24));
         sc.addView(box);
 
-        box.addView(title("الإحصائيات"));
+        TextView h = title("الإحصائيات");
+        h.setTextSize(24);
+        box.addView(h);
         box.addView(muted("نظرة سريعة على إنجازك الدراسي."));
         box.addView(space(dp(12)));
 
@@ -4137,15 +4139,16 @@ public class MainActivity extends Activity {
         int done = planner.doneMinutes();
         int pct = total > 0 ? Math.max(0, Math.min(100, (int)Math.round(100.0 * done / total))) : 0;
 
+        // الكارت الرئيسي: العداد يمينًا والجملة في المنتصف ناحية اليسار
         LinearLayout hero = card();
         hero.setOrientation(LinearLayout.HORIZONTAL);
         hero.setGravity(Gravity.CENTER_VERTICAL);
         hero.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        hero.setPadding(dp(14), dp(14), dp(14), dp(14));
+        hero.setPadding(dp(16), dp(12), dp(16), dp(12));
 
         StatsGaugeView gauge = new StatsGaugeView(this);
         gauge.setPercent(pct);
-        LinearLayout.LayoutParams gaugeLp = new LinearLayout.LayoutParams(dp(154), dp(176));
+        LinearLayout.LayoutParams gaugeLp = new LinearLayout.LayoutParams(dp(160), dp(164));
         gaugeLp.gravity = Gravity.CENTER_VERTICAL;
         hero.addView(gauge, gaugeLp);
 
@@ -4153,68 +4156,67 @@ public class MainActivity extends Activity {
         phraseBox.setOrientation(LinearLayout.VERTICAL);
         phraseBox.setGravity(Gravity.CENTER);
         phraseBox.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        phraseBox.setPadding(dp(12), 0, dp(12), 0);
+        phraseBox.setPadding(dp(18), 0, dp(28), 0);
 
         TextView phrase = new TextView(this);
         phrase.setText(statsPhrase(pct));
         phrase.setTextColor(ACCENT);
-        phrase.setTextSize(20);
+        phrase.setTextSize(22);
         phrase.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
         phrase.setGravity(Gravity.CENTER);
-        phrase.setLineSpacing(dp(3), 1.05f);
-        phraseBox.addView(phrase, new LinearLayout.LayoutParams(-1, -2));
+        phrase.setLineSpacing(dp(4), 1.05f);
+        phraseBox.addView(phrase);
 
         TextView phraseHint = new TextView(this);
         phraseHint.setText(pct == 0 ? "كل إنجاز بيبدأ بخطوة" : pct >= 90 ? "خطوات بسيطة وتكمل خطتك" : "كمّل بنفس الوتيرة، كل خطوة بتفرق");
-        phraseHint.setTextColor(MUTED);
-        phraseHint.setTextSize(12);
+        phraseHint.setTextColor(withAlpha(ACCENT, 185));
+        phraseHint.setTextSize(13);
         phraseHint.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(-1, -2);
-        hintLp.topMargin = dp(9);
+        hintLp.topMargin = dp(10);
         phraseBox.addView(phraseHint, hintLp);
-
-        hero.addView(phraseBox, new LinearLayout.LayoutParams(0, dp(176), 1f));
+        hero.addView(phraseBox, new LinearLayout.LayoutParams(0, dp(164), 1f));
         box.addView(hero);
-        box.addView(space(dp(10)));
+        box.addView(space(dp(12)));
 
         planner.refreshRemainingFromSessions();
         int remainingTasks = 0;
         for (Planner.Task t : planner.tasks) if (!t.done) remainingTasks++;
         int studyHours = Math.max(0, done) / 60;
 
+        // 3 كروت متساوية جنب بعض
         LinearLayout three = new LinearLayout(this);
         three.setOrientation(LinearLayout.HORIZONTAL);
         three.setGravity(Gravity.CENTER);
         three.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-
-        LinearLayout.LayoutParams metricLp = new LinearLayout.LayoutParams(0, dp(104), 1f);
-        metricLp.setMargins(dp(2), 0, dp(2), 0);
-        three.addView(statMetricCard("⏱", studyHours + " س", "ساعات المذاكرة"), metricLp);
-        three.addView(spaceWidth(dp(5)));
-        LinearLayout.LayoutParams metricLp2 = new LinearLayout.LayoutParams(0, dp(104), 1f);
-        metricLp2.setMargins(dp(2), 0, dp(2), 0);
-        three.addView(statMetricCard("✓", String.valueOf(doneTasksCount()), "المهام المكتملة"), metricLp2);
-        three.addView(spaceWidth(dp(5)));
-        LinearLayout.LayoutParams metricLp3 = new LinearLayout.LayoutParams(0, dp(104), 1f);
-        metricLp3.setMargins(dp(2), 0, dp(2), 0);
-        three.addView(statMetricCard("○", String.valueOf(remainingTasks), "المهام المتبقية"), metricLp3);
+        String[][] metrics = {
+                {"⏱", studyHours + " س", "ساعات المذاكرة"},
+                {"✓", String.valueOf(doneTasksCount()), "المهام المكتملة"},
+                {"○", String.valueOf(remainingTasks), "المهام المتبقية"}
+        };
+        for (int i = 0; i < metrics.length; i++) {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(108), 1f);
+            if (i > 0) lp.leftMargin = dp(4);
+            if (i < metrics.length - 1) lp.rightMargin = dp(4);
+            three.addView(statMetricCard(metrics[i][0], metrics[i][1], metrics[i][2]), lp);
+        }
         box.addView(three);
         box.addView(space(dp(12)));
 
+        // إنجاز آخر 7 أيام: كل عمود 10 شرائح، الشريحة المنجزة واضحة والباقي باهت
         LinearLayout weekCard = card();
         weekCard.setOrientation(LinearLayout.VERTICAL);
-        weekCard.setPadding(dp(14), dp(14), dp(14), dp(12));
-        TextView weekTitle = sectionHeader("الإنجاز خلال آخر 7 أيام");
-        weekCard.addView(weekTitle);
-        TextView weekHint = muted("كل عمود 10 أجزاء — الجزء المضيء يوضح نسبة إنجاز اليوم.");
+        weekCard.setPadding(dp(14), dp(14), dp(14), dp(10));
+        weekCard.addView(sectionHeader("الإنجاز خلال آخر 7 أيام"));
+        TextView weekHint = muted("كل يوم مقسّم إلى 10 أجزاء · كل جزء = 10%");
+        weekHint.setTextColor(withAlpha(ACCENT, 165));
         weekCard.addView(weekHint);
-        box.addView(space(dp(0)));
 
         LinearLayout chart = new LinearLayout(this);
         chart.setOrientation(LinearLayout.HORIZONTAL);
         chart.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         chart.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        chart.setPadding(dp(4), dp(12), dp(4), dp(2));
+        chart.setPadding(dp(2), dp(12), dp(2), dp(2));
 
         Calendar base = Calendar.getInstance();
         base.set(Calendar.HOUR_OF_DAY, 0);
@@ -4227,44 +4229,43 @@ public class MainActivity extends Activity {
             d.add(Calendar.DAY_OF_YEAR, -i);
             String ds = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(d.getTime());
             float rp = Math.max(0f, Math.min(1f, sessionCompletionRatio(ds, ds)));
-            int doneSegments = Math.max(0, Math.min(10, Math.round(rp * 10f)));
+            int doneSegments = Math.max(0, Math.min(10, (int)Math.round(rp * 10f)));
 
             LinearLayout col = new LinearLayout(this);
             col.setOrientation(LinearLayout.VERTICAL);
             col.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
 
-            TextView val = muted(Math.round(rp * 100f) + "%");
-            val.setTextSize(11);
+            TextView val = new TextView(this);
+            val.setText(Math.round(rp * 100f) + "%");
             val.setTextColor(ACCENT);
+            val.setTextSize(11);
             val.setTypeface(Typeface.DEFAULT_BOLD);
             val.setGravity(Gravity.CENTER);
-            col.addView(val);
+            col.addView(val, new LinearLayout.LayoutParams(-1, dp(20)));
 
             LinearLayout segments = new LinearLayout(this);
             segments.setOrientation(LinearLayout.VERTICAL);
             segments.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-            segments.setPadding(0, dp(5), 0, dp(6));
-
             for (int seg = 9; seg >= 0; seg--) {
                 View part = new View(this);
-                GradientDrawable partBg = new GradientDrawable();
-                partBg.setCornerRadius(dp(4));
-                boolean active = seg < doneSegments;
-                partBg.setColor(active ? ACCENT : withAlpha(ACCENT, 24));
-                part.setBackground(partBg);
-                LinearLayout.LayoutParams partLp = new LinearLayout.LayoutParams(dp(28), dp(7));
+                GradientDrawable bg = new GradientDrawable();
+                bg.setCornerRadius(dp(3));
+                bg.setColor(seg < doneSegments ? ACCENT : withAlpha(ACCENT, 28));
+                part.setBackground(bg);
+                LinearLayout.LayoutParams partLp = new LinearLayout.LayoutParams(dp(27), dp(7));
                 if (seg != 0) partLp.bottomMargin = dp(3);
                 segments.addView(part, partLp);
             }
-            col.addView(segments, new LinearLayout.LayoutParams(-1, dp(101)));
+            col.addView(segments, new LinearLayout.LayoutParams(-1, dp(97)));
 
-            TextView dn = muted(new SimpleDateFormat("EEE", new Locale("ar")).format(d.getTime()));
+            TextView dn = new TextView(this);
+            dn.setText(new SimpleDateFormat("EEE", new Locale("ar")).format(d.getTime()));
             dn.setTextSize(10);
             dn.setTextColor(MUTED);
             dn.setGravity(Gravity.CENTER);
-            col.addView(dn);
+            col.addView(dn, new LinearLayout.LayoutParams(-1, dp(18)));
 
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, dp(132), 1f);
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, dp(140), 1f);
             cp.setMargins(dp(2), 0, dp(2), 0);
             chart.addView(col, cp);
         }
@@ -4296,8 +4297,7 @@ public class MainActivity extends Activity {
                 sn.setTextSize(14);
                 sn.setTypeface(Typeface.DEFAULT_BOLD);
                 info.addView(sn);
-                TextView detail = muted(d + " / " + tot + " د  ·  " + p + "%");
-                info.addView(detail);
+                info.addView(muted(d + " / " + tot + " د  ·  " + p + "%"));
                 ProgressBar pb = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
                 pb.setMax(100);
                 pb.setProgress(p);
@@ -5304,14 +5304,14 @@ private View buildRoutineScreen() {
                 TextView subjectTv = new TextView(this);
                 subjectTv.setText(e.subject == null ? "" : e.subject);
                 subjectTv.setTextColor(ACCENT);
-                subjectTv.setTextSize(18);
+                subjectTv.setTextSize(20);
                 subjectTv.setTypeface(Typeface.DEFAULT_BOLD);
                 titles.addView(subjectTv);
 
                 TextView examName = new TextView(this);
                 examName.setText((e.title == null || e.title.isEmpty()) ? "امتحان" : e.title);
                 examName.setTextColor(TEXT);
-                examName.setTextSize(22);
+                examName.setTextSize(24);
                 examName.setTypeface(Typeface.DEFAULT_BOLD);
                 titles.addView(examName);
                 head.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -5320,7 +5320,7 @@ private View buildRoutineScreen() {
                 leftTime.setGravity(Gravity.CENTER);
                 leftTime.setPadding(dp(8), 0, dp(4), 0);
                 leftTime.addView(whenTv, new LinearLayout.LayoutParams(dp(92), dp(44)));
-                head.addView(leftTime, new LinearLayout.LayoutParams(dp(98), dp(58)));
+                head.addView(leftTime, new LinearLayout.LayoutParams(dp(98), dp(58)));\n\n                TextView arrow = new TextView(this);\n                arrow.setText("‹");\n                arrow.setTextColor(ACCENT);\n                arrow.setTextSize(30);\n                arrow.setGravity(Gravity.CENTER);\n                arrow.setTypeface(Typeface.DEFAULT_BOLD);\n                head.addView(arrow, new LinearLayout.LayoutParams(dp(34), dp(58)));
                 examCard.addView(head);
                 examCard.addView(space(dp(10)));
 
