@@ -6278,7 +6278,7 @@ public class MainActivity extends Activity {
     private TextView label(String s) {
         TextView t = new TextView(this);
         t.setText(s);
-        t.setTextColor(MUTED);
+        t.setTextColor(TEXT);
         t.setTextSize(12);
         t.setPadding(0, dp(10), 0, dp(4));
         return t;
