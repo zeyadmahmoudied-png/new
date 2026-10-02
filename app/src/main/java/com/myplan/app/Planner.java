@@ -4173,16 +4173,24 @@ public String adjustSessionDuration(String sessionId, int newDur) {
     }
 
     public int doneMinutes() {
+        // الإحصائية تعتمد على كل مهمة ككل: لو المهمة اكتملت، تُحسب مدتها كاملة
+        // حتى لو كانت الجلسة التي أنهتها أقصر/جزئية. هذا يمنع ظهور 2% بعد إكمال مهمة واحدة.
         int n = 0;
-        Set<String> counted = new HashSet<>();
-        for (Session s : sessions) {
-            if (s.done) {
-                n += s.durationMin;
-                counted.add(s.taskId);
-            }
-        }
         for (Task t : tasks) {
-            if (t.done && !counted.contains(t.id)) n += t.durationMin;
+            if (t == null) continue;
+            int taskTotal = Math.max(0, t.durationMin);
+            if (t.done) {
+                n += taskTotal;
+                continue;
+            }
+
+            int taskDone = 0;
+            for (Session s : sessions) {
+                if (s == null || s.taskId == null || !s.taskId.equals(t.id)) continue;
+                if (s.done) taskDone += Math.max(0, s.durationMin);
+                else taskDone += Math.max(0, Math.min(s.durationMin, s.executedMin));
+            }
+            n += Math.min(taskTotal, taskDone);
         }
         return n;
     }
