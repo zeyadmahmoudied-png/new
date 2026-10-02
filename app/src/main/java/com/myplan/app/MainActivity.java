@@ -356,9 +356,9 @@ public class MainActivity extends Activity {
 
     private boolean needsForceUpdate(String current, String minimum) {
         if (minimum == null || minimum.trim().isEmpty()) return false;
-        if (current == null || currentS.trim().isEmpty()) return false;
+        if (current == null || current.trim().isEmpty()) return false;
         try {
-            String[] a = currentS.trim().split("\\.");
+            String[] a = current.trim().split("\\.");
             String[] b = minimum.trim().split("\\.");
             int n = Math.max(a.length, b.length);
             for (int i = 0; i < n; i++) {
