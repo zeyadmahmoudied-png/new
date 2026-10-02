@@ -207,20 +207,14 @@ public final class SupabaseRepository {
             } catch (Exception ignored) {}
             return;
         }
-        // جرّب UUID المحوّل ثم local id ثم installation_id
+        // premium_grants is protected by RLS; read through the client-safe RPC.
         ApiResult<String> r = null;
-        if (!remoteUid.isEmpty()) {
-            r = http.get("/rest/v1/premium_grants?select=*&user_id=eq." + urlEncode(remoteUid) + "&limit=20");
-        }
-        if (r == null || !r.isSuccess() || r.data == null || "[]".equals(r.data.trim())) {
-            if (userId != null && !userId.isEmpty()) {
-                r = http.get("/rest/v1/premium_grants?select=*&user_id=eq." + urlEncode(userId) + "&limit=20");
-            }
-        }
-        if (r == null || !r.isSuccess() || r.data == null || "[]".equals(r.data.trim())) {
-            String inst = AppInfrastructure.getInstallationId(app);
-            r = http.get("/rest/v1/premium_grants?select=*&installation_id=eq." + urlEncode(inst) + "&limit=20");
-        }
+        try {
+            JSONObject body = new JSONObject();
+            if (!remoteUid.isEmpty()) body.put("p_user_id", remoteUid); else body.put("p_user_id", JSONObject.NULL);
+            body.put("p_installation_id", AppInfrastructure.getInstallationId(app));
+            r = http.post("/rest/v1/rpc/myplan_get_premium_grants", body.toString());
+        } catch (Exception ignored) {}
         boolean active = false;
         JSONArray featureKeys = new JSONArray();
         if (r != null && r.isSuccess() && r.data != null) {
@@ -301,20 +295,13 @@ public final class SupabaseRepository {
         }
         try {
             JSONObject body = new JSONObject();
-            body.put("id", remoteUserUuid(account.userId));
-            if (account.email != null && !account.email.isEmpty()) body.put("email", account.email);
-            if (account.displayName != null && !account.displayName.isEmpty()) {
-                body.put("display_name", account.displayName);
-            }
-            body.put("status", "active");
-            // Prefer merge على id إن وُجدت سياسة/قيود
-            ApiResult<String> r = http.postPrefer(
-                    "/rest/v1/app_users?on_conflict=id",
-                    "[" + body + "]",
-                    "resolution=merge-duplicates,return=minimal");
-            if (r.isSuccess()) return ApiResult.success(null);
-            // محاولة INSERT عادية
-            r = http.post("/rest/v1/app_users", "[" + body + "]");
+            body.put("p_user_id", remoteUserUuid(account.userId));
+            body.put("p_local_user_id", account.userId);
+            body.put("p_email", account.email == null ? "" : account.email);
+            body.put("p_display_name", account.displayName == null ? "" : account.displayName);
+            try { body.put("p_app_version", com.myplan.app.BuildConfig.VERSION_NAME); }
+            catch (Exception ignored) { body.put("p_app_version", ""); }
+            ApiResult<String> r = http.post("/rest/v1/rpc/myplan_register_app_user", body.toString());
             if (r.isSuccess()) return ApiResult.success(null);
             return ApiResult.unknown(r.message);
         } catch (Exception e) {
@@ -326,46 +313,30 @@ public final class SupabaseRepository {
     public ApiResult<Void> upsertDevice() {
         if (!isReady()) return ApiResult.notConfigured();
         try {
-            JSONObject body = new JSONObject();
             String inst = AppInfrastructure.getInstallationId(app);
-            body.put("installation_id", inst);
             String uid = AccountAuth.getSessionUserId(app);
-            if (uid != null && !uid.isEmpty()) {
-                body.put("user_id", remoteUserUuid(uid));
-            }
+            String remoteUid = (uid == null || uid.isEmpty()) ? "" : remoteUserUuid(uid);
+            String deviceName = "", manufacturer = "", model = "", androidVersion = "";
             try {
-                String androidId = android.provider.Settings.Secure.getString(
-                        app.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
-                if (androidId != null && !androidId.isEmpty()) body.put("android_id", androidId);
+                manufacturer = android.os.Build.MANUFACTURER;
+                model = android.os.Build.MODEL;
+                deviceName = manufacturer + " " + model;
+                androidVersion = android.os.Build.VERSION.RELEASE;
             } catch (Exception ignored) {}
-            try {
-                body.put("platform", "android");
-                body.put("app_version", com.myplan.app.BuildConfig.VERSION_NAME);
-            } catch (Exception ignored) {}
-            // last_seen إن دعمه الـschema
-            try {
-                body.put("last_seen", new java.text.SimpleDateFormat(
-                        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.US)
-                        .format(new java.util.Date()));
-            } catch (Exception ignored) {}
-            ApiResult<String> r = http.postPrefer(
-                    "/rest/v1/devices?on_conflict=installation_id",
-                    "[" + body + "]",
-                    "resolution=merge-duplicates,return=minimal");
-            if (r.isSuccess()) return ApiResult.success(null);
-            // أزل حقولًا قد لا توجد في schema ثم أعد المحاولة
-            body.remove("last_seen");
-            body.remove("platform");
-            body.remove("app_version");
-            r = http.postPrefer(
-                    "/rest/v1/devices?on_conflict=installation_id",
-                    "[" + body + "]",
-                    "resolution=merge-duplicates,return=minimal");
-            if (r.isSuccess()) return ApiResult.success(null);
-            r = http.post("/rest/v1/devices", "[" + body + "]");
+            String appVersion = "";
+            try { appVersion = com.myplan.app.BuildConfig.VERSION_NAME; } catch (Exception ignored) {}
+            JSONObject body = new JSONObject();
+            body.put("p_installation_id", inst);
+            body.put("p_user_id", remoteUid.isEmpty() ? JSONObject.NULL : remoteUid);
+            body.put("p_device_name", deviceName);
+            body.put("p_manufacturer", manufacturer);
+            body.put("p_model", model);
+            body.put("p_android_version", androidVersion);
+            body.put("p_app_version", appVersion);
+            ApiResult<String> r = http.post("/rest/v1/rpc/myplan_register_device", body.toString());
             if (r.isSuccess()) return ApiResult.success(null);
             return ApiResult.unknown(r.message);
-        } catch (Exception e) {
+        } catch (Exception ex) {
             return ApiResult.unknown("device upsert failed");
         }
     }

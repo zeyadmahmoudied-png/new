@@ -35,6 +35,15 @@ public final class RemoteSyncCoordinator {
             return lastStatus;
         }
         SupabaseRepository repo = new SupabaseRepository(app);
+        // Register identity/device first so the same sync can immediately resolve
+        // premium grants and device/account controls.
+        try {
+            AccountAuth.Account acc = AccountAuth.getCurrentAccount(app);
+            if (acc != null) repo.registerAppUser(acc);
+            repo.upsertDevice();
+        } catch (Exception e) {
+            android.util.Log.w("RemoteSync", "REGISTRATION_FAILED", e);
+        }
         android.util.Log.d("RemoteSync", "REMOTE_SYNC_START");
         ApiResult<JSONObject> fetched = repo.fetchAndCacheControlState();
         if (fetched.isSuccess()) {
