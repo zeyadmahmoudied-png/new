@@ -551,14 +551,16 @@ public class MainActivity extends Activity {
 
     private TextView navItem(String label) {
         TextView t = new TextView(this);
-        t.setText(label);
+        String icon = "الجدول".equals(label) ? "▦" : ("المهام".equals(label) ? "✓" : ("الامتحانات".equals(label) ? "▤" : ("الإحصائيات".equals(label) ? "◔" : "☰")));
+        t.setText(icon + "\n" + label);
         t.setGravity(Gravity.CENTER);
-        t.setTextSize(11f);
+        t.setTextSize(10.5f);
         t.setTextColor(MUTED);
         t.setTypeface(Typeface.DEFAULT_BOLD);
-        t.setPadding(dp(2), dp(8), dp(2), dp(8));
-        t.setMinHeight(dp(48));
+        t.setPadding(dp(2), dp(4), dp(2), dp(4));
+        t.setMinHeight(dp(52));
         t.setAllCaps(false);
+        t.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         return t;
     }
 
