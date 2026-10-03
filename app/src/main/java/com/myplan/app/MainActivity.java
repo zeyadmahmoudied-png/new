@@ -684,9 +684,10 @@ public class MainActivity extends Activity {
                 c.add(Calendar.DAY_OF_YEAR,1);
             }
             String periodTitle="";
+            Calendar end=(Calendar)c.clone(); end.add(Calendar.DAY_OF_YEAR,-1);
             String periodDate=String.format(Locale.US,"%02d/%02d → %02d/%02d",
                     start.get(Calendar.DAY_OF_MONTH),start.get(Calendar.MONTH)+1,
-                    c.get(Calendar.DAY_OF_MONTH)-1,c.get(Calendar.MONTH)+1);
+                    end.get(Calendar.DAY_OF_MONTH),end.get(Calendar.MONTH)+1);
             addSchedulePeriodHeader(box,periodTitle,periodDate,periodSessions);
             c=(Calendar)start.clone();
             for(int k=0;k<days;k++){
@@ -4071,8 +4072,7 @@ public class MainActivity extends Activity {
             p.setShader(null);
 
             p.setStyle(Paint.Style.FILL);
-            int colorIndex = percent >= 91 ? 9 : Math.max(0, Math.min(9, percent / 10));
-            p.setColor(colors[colorIndex]);
+            p.setColor(Color.WHITE);
             p.setTypeface(Typeface.DEFAULT_BOLD);
             p.setTextAlign(Paint.Align.CENTER);
             p.setTextSize(dp(getContext(),23));
@@ -4307,8 +4307,15 @@ public class MainActivity extends Activity {
         TextView accountState=muted(AccountAuth.getCurrentAccount(this)==null?"تسجيل الدخول":"فتح الحساب");
         account.addView(accountState);
         account.setOnClickListener(v->{
-            if(AccountAuth.getCurrentAccount(this)==null) showLocalLoginDialog();
-            else { moreOpenSections.add("account"); showTab(4); }
+            AccountAuth.Account acc=AccountAuth.getCurrentAccount(this);
+            if(acc==null){ showLocalLoginDialog(); return; }
+            String name=(acc.displayName!=null&&!acc.displayName.trim().isEmpty())?acc.displayName.trim():"—";
+            String email=(acc.email!=null&&!acc.email.isEmpty())?acc.email:"—";
+            String uid=(acc.userId!=null&&!acc.userId.isEmpty())?acc.userId:"—";
+            myDialog().setTitle("الحساب")
+                    .setMessage("الاسم: "+name+"\nالبريد: "+email+"\nمعرّف الحساب: "+uid)
+                    .setPositiveButton("حسنًا",null)
+                    .show();
         });
         box.addView(account);
 
@@ -4317,6 +4324,7 @@ public class MainActivity extends Activity {
         ver.setGravity(Gravity.CENTER);
         ver.setTextSize(11);
         ver.setTextColor(MUTED2);
+        ver.setOnLongClickListener(v->{promptDeveloperPassword();return true;});
         box.addView(ver);
         return sc;
     }
