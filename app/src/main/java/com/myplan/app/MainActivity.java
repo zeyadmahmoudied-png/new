@@ -3539,7 +3539,7 @@ public class MainActivity extends Activity {
 
         final String[] subjectHold = {existing != null && existing.subject != null ? existing.subject : ""};
         form.addView(label("المادة"));
-        TextView subject = chip(subjectHold[0].isEmpty() ? "اختار المادة ▾" : subjectHold[0], true);
+        TextView subject = dialogChoice(subjectHold[0].isEmpty() ? "اختار المادة ▾" : subjectHold[0], true);
         subject.setOnClickListener(v -> pickSubject(subjectHold[0], name0 -> {
             subjectHold[0] = name0;
             subject.setText(name0);
@@ -3560,10 +3560,10 @@ public class MainActivity extends Activity {
         TextView[] priChips = new TextView[3];
         for (int i = 0; i < 3; i++) {
             final int idx = i;
-            priChips[i] = chip(Planner.PRIORITY_LABELS[i], pri[0] == i);
+            priChips[i] = dialogChoice(Planner.PRIORITY_LABELS[i], pri[0] == i);
             priChips[i].setOnClickListener(v -> {
                 pri[0] = idx;
-                for (int j = 0; j < 3; j++) styleChip(priChips[j], pri[0] == j);
+                for (int j = 0; j < 3; j++) styleDialogChoice(priChips[j], pri[0] == j);
             });
             priRow.addView(priChips[i], chipLp());
             if (i < 2) priRow.addView(space(dp(6)));
@@ -3574,17 +3574,17 @@ public class MainActivity extends Activity {
         final int[] kind = {existing != null ? existing.kind : Planner.Task.KIND_LECTURE};
         LinearLayout kindRow = new LinearLayout(this);
         kindRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView chipLec = chip("محاضرة 📖", kind[0] != Planner.Task.KIND_STUDY);
-        TextView chipStu = chip("مذاكرة 📝", kind[0] == Planner.Task.KIND_STUDY);
+        TextView chipLec = dialogChoice("محاضرة 📖", kind[0] != Planner.Task.KIND_STUDY);
+        TextView chipStu = dialogChoice("مذاكرة 📝", kind[0] == Planner.Task.KIND_STUDY);
         chipLec.setOnClickListener(v -> {
             kind[0] = Planner.Task.KIND_LECTURE;
-            styleChip(chipLec, true);
-            styleChip(chipStu, false);
+            styleDialogChoice(chipLec, true);
+            styleDialogChoice(chipStu, false);
         });
         chipStu.setOnClickListener(v -> {
             kind[0] = Planner.Task.KIND_STUDY;
-            styleChip(chipLec, false);
-            styleChip(chipStu, true);
+            styleDialogChoice(chipLec, false);
+            styleDialogChoice(chipStu, true);
         });
         kindRow.addView(chipLec, chipLp());
         kindRow.addView(space(dp(6)));
@@ -3597,17 +3597,17 @@ public class MainActivity extends Activity {
         final boolean[] backlog = {existing != null && existing.backlog};
         LinearLayout typeRow = new LinearLayout(this);
         typeRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView chipNew = chip("جديدة 🆕", !backlog[0]);
-        TextView chipBack = chip("قديمة 📚", backlog[0]);
+        TextView chipNew = dialogChoice("جديدة 🆕", !backlog[0]);
+        TextView chipBack = dialogChoice("قديمة 📚", backlog[0]);
         chipNew.setOnClickListener(v -> {
             backlog[0] = false;
-            styleChip(chipNew, true);
-            styleChip(chipBack, false);
+            styleDialogChoice(chipNew, true);
+            styleDialogChoice(chipBack, false);
         });
         chipBack.setOnClickListener(v -> {
             backlog[0] = true;
-            styleChip(chipNew, false);
-            styleChip(chipBack, true);
+            styleDialogChoice(chipNew, false);
+            styleDialogChoice(chipBack, true);
         });
         typeRow.addView(chipNew, chipLp());
         typeRow.addView(space(dp(8)));
@@ -3634,9 +3634,9 @@ public class MainActivity extends Activity {
         final int[] pinMin = {existing != null ? existing.pinStartMin : 16 * 60 + 30};
         LinearLayout pinRow = new LinearLayout(this);
         pinRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView chipAuto = chip("تلقائي", !pin[0]);
-        TextView chipManual = chip("أحدده بنفسي", pin[0]);
-        TextView pinWhen = chip(
+        TextView chipAuto = dialogChoice("تلقائي", !pin[0]);
+        TextView chipManual = dialogChoice("أحدده بنفسي", pin[0]);
+        TextView pinWhen = dialogChoice(
                 pin[0] && pinDay[0].length() > 0
                         ? (pinDay[0] + "  " + Planner.minToTime(pinMin[0]))
                         : "اختار التاريخ والوقت",
@@ -3644,8 +3644,8 @@ public class MainActivity extends Activity {
         pinWhen.setVisibility(pin[0] ? View.VISIBLE : View.GONE);
         chipAuto.setOnClickListener(v -> {
             pin[0] = false;
-            styleChip(chipAuto, true);
-            styleChip(chipManual, false);
+            styleDialogChoice(chipAuto, true);
+            styleDialogChoice(chipManual, false);
             pinWhen.setVisibility(View.GONE);
         });
         Runnable pickPin = () -> {
@@ -3661,14 +3661,14 @@ public class MainActivity extends Activity {
                 pickTime(pinMin[0], min -> {
                     pinMin[0] = min;
                     pinWhen.setText(pinDay[0] + "  " + Planner.minToTime(pinMin[0]));
-                    styleChip(pinWhen, true);
+                    styleDialogChoice(pinWhen, true);
                 });
             }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show();
         };
         chipManual.setOnClickListener(v -> {
             pin[0] = true;
-            styleChip(chipAuto, false);
-            styleChip(chipManual, true);
+            styleDialogChoice(chipAuto, false);
+            styleDialogChoice(chipManual, true);
             pinWhen.setVisibility(View.VISIBLE);
             pickPin.run();
         });
@@ -3684,26 +3684,26 @@ public class MainActivity extends Activity {
         final int[] prefDow = {existing != null ? existing.preferredDow : 0};
         LinearLayout prefRow = new LinearLayout(this);
         prefRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView prefNone = chip("بدون", prefDow[0] == 0);
+        TextView prefNone = dialogChoice("بدون", prefDow[0] == 0);
         prefNone.setOnClickListener(v -> {
             prefDow[0] = 0;
-            styleChip(prefNone, true);
+            styleDialogChoice(prefNone, true);
             for (int i = 0; i < prefRow.getChildCount(); i++) {
                 View ch = prefRow.getChildAt(i);
-                if (ch instanceof TextView && ch != prefNone) styleChip((TextView) ch, false);
+                if (ch instanceof TextView && ch != prefNone) styleDialogChoice((TextView) ch, false);
             }
         });
         prefRow.addView(prefNone, chipLp());
         // ترتيب My Plan: السبت أولًا
         for (int d : WEEK_ORDER) {
             final int dow = d;
-            TextView c = chip(DAY_NAMES[d], prefDow[0] == d);
+            TextView c = dialogChoice(DAY_NAMES[d], prefDow[0] == d);
             c.setOnClickListener(v -> {
                 prefDow[0] = dow;
-                styleChip(prefNone, false);
+                styleDialogChoice(prefNone, false);
                 for (int i = 0; i < prefRow.getChildCount(); i++) {
                     View ch = prefRow.getChildAt(i);
-                    if (ch instanceof TextView) styleChip((TextView) ch, ch == c);
+                    if (ch instanceof TextView) styleDialogChoice((TextView) ch, ch == c);
                 }
             });
             prefRow.addView(space(dp(4)));
@@ -3717,14 +3717,14 @@ public class MainActivity extends Activity {
         moreBox.addView(muted("لو محدد: كل جلسات المحاضرة في اليوم ده فقط (قيد إلزامي)."));
 
         moreBox.addView(label("الموعد النهائي (اختياري)"));
-        TextView deadlineTv = chip("بدون موعد", true);
+        TextView deadlineTv = dialogChoice("بدون موعد");
         final String[] deadline = {""};
         deadlineTv.setOnClickListener(v -> {
             Calendar cal = Calendar.getInstance();
             new DatePickerDialog(this, (vv, y, m, day) -> {
                 deadline[0] = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, day);
                 deadlineTv.setText(deadline[0]);
-                styleChip(deadlineTv, true);
+                styleDialogChoice(deadlineTv, true);
             }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show();
         });
         moreBox.addView(deadlineTv);
@@ -5072,14 +5072,14 @@ public class MainActivity extends Activity {
         LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(18),dp(12),dp(18),dp(10));form.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         final String[] subjectHold={existing!=null&&existing.subject!=null?existing.subject:""};
         TextView subjectLabel=label("المادة");subjectLabel.setTextColor(TEXT);form.addView(subjectLabel);
-        TextView subject=chip(subjectHold[0].isEmpty()?"اختار مادة":subjectHold[0],true);form.addView(subject);
+        TextView subject=dialogChoice(subjectHold[0].isEmpty()?"اختار مادة":subjectHold[0],true);form.addView(subject);
         form.addView(space(dp(8)));
         TextView titleLabel=label("اسم الامتحان");titleLabel.setTextColor(TEXT);form.addView(titleLabel);
         EditText title=dialogField();title.setHint("اسم الامتحان");if(existing!=null&&existing.title!=null)title.setText(existing.title);form.addView(title);
         form.addView(space(dp(8)));
         TextView dateLabel=label("تاريخ الامتحان");dateLabel.setTextColor(TEXT);form.addView(dateLabel);
         final String[] day={existing!=null&&existing.day!=null?existing.day:""};
-        TextView dayTv=chip(day[0].isEmpty()?"اختار التاريخ":day[0],true);
+        TextView dayTv=dialogChoice(day[0].isEmpty()?"اختار التاريخ":day[0],true);
         dayTv.setOnClickListener(v->{Calendar cal=Calendar.getInstance();DatePickerDialog dpd=new DatePickerDialog(this,(vv,y,m,d)->{day[0]=String.format(Locale.US,"%04d-%02d-%02d",y,m+1,d);dayTv.setText(day[0]);dayTv.setTextColor(ACCENT);},cal.get(Calendar.YEAR),cal.get(Calendar.MONTH),cal.get(Calendar.DAY_OF_MONTH));dpd.setOnShowListener(x->styleBlueDialog(dpd));dpd.show();});form.addView(dayTv);
         form.addView(space(dp(12)));TextView moreToggle=link("خيارات إضافية ▾");moreToggle.setTextColor(ACCENT);form.addView(moreToggle);
         LinearLayout moreBox=new LinearLayout(this);moreBox.setOrientation(LinearLayout.VERTICAL);moreBox.setVisibility(View.GONE);moreBox.setPadding(0,dp(8),0,0);
@@ -5088,7 +5088,7 @@ public class MainActivity extends Activity {
         moreBox.addView(space(dp(8)));final int[] prep={existing!=null?existing.prepLevel:40};TextView prepTv=new TextView(this);prepTv.setText("مستوى التحضير: "+prep[0]+"%");prepTv.setTextColor(TEXT);prepTv.setTextSize(12);SeekBar prepBar=new SeekBar(this);prepBar.setMax(100);prepBar.setProgress(prep[0]);prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){prep[0]=p;prepTv.setText("مستوى التحضير: "+p+"%");}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});moreBox.addView(prepTv);moreBox.addView(prepBar);
         moreBox.addView(space(dp(8)));TextView lastLabel=label("آخر محاضرة داخلة في الامتحان");lastLabel.setTextColor(TEXT);moreBox.addView(lastLabel);TextView lastHint=muted("مثال: محاضرة 7 → الامتحان يشمل 1…7.");lastHint.setTextColor(MUTED);moreBox.addView(lastHint);
         final String[] lastLecId={existing!=null&&existing.lastLectureTaskId!=null?existing.lastLectureTaskId:""};String lastLecLabel="بدون تحديد";if(!lastLecId[0].isEmpty()){Planner.Task lt=planner.findTask(lastLecId[0]);if(lt!=null){int n=Planner.lectureNumber(lt);lastLecLabel=(n>=0?("محاضرة "+n+" — "):"")+(lt.name==null?"?":lt.name);}}
-        TextView lastLecTv=chip(lastLecLabel,true);
+        TextView lastLecTv=dialogChoice(lastLecLabel);
         lastLecTv.setOnClickListener(v->{String sub=subjectHold[0]==null?"":subjectHold[0].trim();if(sub.isEmpty()){Toast.makeText(this,"اختار المادة أولًا",Toast.LENGTH_SHORT).show();return;}java.util.ArrayList<Planner.Task> lecs=new java.util.ArrayList<>();for(Planner.Task tk:planner.tasks)if(tk.subject!=null&&tk.subject.equals(sub))lecs.add(tk);lecs.sort((a,b)->Integer.compare(Planner.lectureNumber(a),Planner.lectureNumber(b)));String[] labels=new String[lecs.size()+1];labels[0]="بدون تحديد";for(int i=0;i<lecs.size();i++){Planner.Task tk=lecs.get(i);int n=Planner.lectureNumber(tk);labels[i+1]=(n>=0?("محاضرة "+n+" — "):"")+(tk.name==null?"?":tk.name)+(tk.done?" ✓":"");}AlertDialog ld=myDialog().setTitle("آخر محاضرة — "+sub).setItems(labels,(dd,w)->{if(w==0){lastLecId[0]="";lastLecTv.setText("بدون تحديد");}else{Planner.Task tk=lecs.get(w-1);lastLecId[0]=tk.id;int n=Planner.lectureNumber(tk);lastLecTv.setText((n>=0?("محاضرة "+n+" — "):"")+(tk.name==null?"?":tk.name));}lastLecTv.setTextColor(ACCENT);}).show();styleBlueDialog(ld);});
         moreBox.addView(lastLecTv);form.addView(moreBox);
         final boolean[] moreOpen={false};moreToggle.setOnClickListener(v->{moreOpen[0]=!moreOpen[0];moreBox.setVisibility(moreOpen[0]?View.VISIBLE:View.GONE);moreToggle.setText(moreOpen[0]?"خيارات إضافية ▴":"خيارات إضافية ▾");});
@@ -6239,6 +6239,29 @@ public class MainActivity extends Activity {
         bg.setStroke(dp(1), 0x664B6DFF);
         e.setBackground(bg);
         return e;
+    }
+
+    /** نفس شكل حقل الإدخال الأزرق، لكن لحقل الاختيار/الزر داخل نماذج الإضافة. */
+    private TextView dialogChoice(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextSize(13);
+        t.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        t.setPadding(dp(14), dp(12), dp(14), dp(12));
+        t.setSingleLine(true);
+        t.setMaxLines(1);
+        styleDialogChoice(t);
+        return t;
+    }
+
+    private void styleDialogChoice(TextView t) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xFF193A86);
+        bg.setCornerRadius(dp(RADIUS_SM));
+        bg.setStroke(dp(1), 0x664B6DFF);
+        t.setTextColor(TEXT);
+        t.setTypeface(Typeface.DEFAULT);
+        t.setBackground(bg);
     }
 
     private View pad(View v) {
