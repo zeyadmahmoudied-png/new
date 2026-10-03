@@ -3249,7 +3249,7 @@ public class MainActivity extends Activity {
 
                 final String[] subH = {""};
                 subjectHolds.add(subH);
-                TextView subV = chip("اختار المادة ▾", true);
+                TextView subV = dialogChoice("اختار المادة ▾", true);
                 subV.setOnClickListener(v -> pickSubject(subH[0], n -> {
                     subH[0] = n;
                     subV.setText(n);
@@ -3274,10 +3274,10 @@ public class MainActivity extends Activity {
                 String[] pl = {"منخفضة", "متوسطة", "عالية"};
                 for (int i = 0; i < 3; i++) {
                     final int idx = i;
-                    pcs[i] = chip(pl[i], pri[0] == i);
+                    pcs[i] = dialogChoice(pl[i], pri[0] == i);
                     pcs[i].setOnClickListener(v -> {
                         pri[0] = idx;
-                        for (int j = 0; j < 3; j++) styleChip(pcs[j], j == idx);
+                        for (int j = 0; j < 3; j++) styleDialogChoice(pcs[j], j == idx);
                     });
                     priRow.addView(pcs[i], chipLp());
                     if (i < 2) priRow.addView(space(dp(4)));
