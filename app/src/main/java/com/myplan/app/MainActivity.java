@@ -647,8 +647,11 @@ public class MainActivity extends Activity {
         top.addView(space(dp(6)));
         TextView more=ghostBtn("•••"); more.setOnClickListener(v->showScheduleMoreMenu(v));
         top.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));
-        box.addView(top); box.addView(space(dp(16)));
+        box.addView(top); box.addView(space(dp(10)));
 
+        LinearLayout tabsWrap=new LinearLayout(this);
+        tabsWrap.setGravity(Gravity.CENTER);
+        tabsWrap.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         LinearLayout tabs=new LinearLayout(this);
         tabs.setGravity(Gravity.CENTER_VERTICAL);
         tabs.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
@@ -658,14 +661,13 @@ public class MainActivity extends Activity {
         d.setOnClickListener(v->{scheduleViewMode=0;weekView=false;showTab(0);});
         w.setOnClickListener(v->{scheduleViewMode=1;weekView=true;showTab(6);});
         cu.setOnClickListener(v->{scheduleViewMode=2;weekView=true;showTab(6);});
-        tabs.addView(d, scheduleModeTabLp());
-        tabs.addView(w, scheduleModeTabLp());
-        tabs.addView(cu, scheduleModeTabLp());
-        box.addView(tabs); box.addView(space(dp(14)));
+        tabs.addView(d,scheduleModeTabLp()); tabs.addView(w,scheduleModeTabLp()); tabs.addView(cu,scheduleModeTabLp());
+        tabsWrap.addView(tabs,new LinearLayout.LayoutParams(dp(210),dp(44)));
+        box.addView(tabsWrap); box.addView(space(dp(12)));
 
         if(scheduleViewMode==0){
             List<Planner.Session> today=planner.sessionsForDay(Planner.todayStr());
-            addSchedulePeriodHeader(box, "اليوم", Planner.todayStr(), today);
+            addSchedulePeriodHeader(box,"",Planner.todayStr(),today);
             addScheduleDayBlock(box,Planner.todayStr(),true);
         } else {
             Calendar c=Calendar.getInstance(); c.set(Calendar.HOUR_OF_DAY,0);c.set(Calendar.MINUTE,0);c.set(Calendar.SECOND,0);c.set(Calendar.MILLISECOND,0);
@@ -681,10 +683,10 @@ public class MainActivity extends Activity {
                 periodSessions.addAll(dl);
                 c.add(Calendar.DAY_OF_YEAR,1);
             }
-            String periodTitle=scheduleViewMode==1?"الأسبوع":"مخصص";
-            String periodDate=String.format(Locale.US,"%04d-%02d-%02d → %04d-%02d-%02d",
-                    start.get(Calendar.YEAR),start.get(Calendar.MONTH)+1,start.get(Calendar.DAY_OF_MONTH),
-                    c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH)-1);
+            String periodTitle="";
+            String periodDate=String.format(Locale.US,"%02d/%02d → %02d/%02d",
+                    start.get(Calendar.DAY_OF_MONTH),start.get(Calendar.MONTH)+1,
+                    c.get(Calendar.DAY_OF_MONTH)-1,c.get(Calendar.MONTH)+1);
             addSchedulePeriodHeader(box,periodTitle,periodDate,periodSessions);
             c=(Calendar)start.clone();
             for(int k=0;k<days;k++){
@@ -699,9 +701,7 @@ public class MainActivity extends Activity {
     }
 
     private void addSchedulePeriodHeader(LinearLayout box, String titleText, String dateText, List<Planner.Session> sessions) {
-        int total=sessions==null?0:sessions.size();
-        int done=0;
-        int totalMin=0, doneMin=0;
+        int total=sessions==null?0:sessions.size(), done=0, totalMin=0, doneMin=0;
         if(sessions!=null) for(Planner.Session s:sessions){
             if(s==null) continue;
             totalMin+=Math.max(0,s.durationMin);
@@ -712,57 +712,42 @@ public class MainActivity extends Activity {
         LinearLayout head=new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.setPadding(dp(12),dp(9),dp(12),dp(9));
-        GradientDrawable hb=new GradientDrawable();
-        hb.setColor(CARD2);
-        hb.setCornerRadius(dp(16));
-        hb.setStroke(dp(1),0x223E5A86);
-        head.setBackground(hb);
+        head.setPadding(0,dp(2),0,dp(2));
 
-        FrameLayout gaugeWrap=new FrameLayout(this);
         DayGaugeView gauge=new DayGaugeView(this);
         gauge.setProgress(pct);
-        gaugeWrap.addView(gauge,new FrameLayout.LayoutParams(dp(66),dp(66)));
-        head.addView(gaugeWrap,new LinearLayout.LayoutParams(dp(66),dp(66)));
+        head.addView(gauge,new LinearLayout.LayoutParams(dp(64),dp(64)));
 
         LinearLayout info=new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
-        info.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         info.setGravity(Gravity.CENTER_VERTICAL|Gravity.RIGHT);
+        info.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
-        TextView title=new TextView(this);
-        title.setText(titleText);
-        title.setTextColor(TEXT);
-        title.setTextSize(18);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        info.addView(title);
-
-        if(dateText!=null && !dateText.isEmpty() && !"اليوم".equals(titleText)){
-            TextView date=muted(dateText);
-            date.setTextSize(11.5f);
-            info.addView(date);
-        }
-
-        LinearLayout summaryRow=new LinearLayout(this);
-        summaryRow.setOrientation(LinearLayout.HORIZONTAL);
-        summaryRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView summary=new TextView(this);
         summary.setText(done+" من "+total+" محاضرات");
-        summary.setTextSize(14);
         summary.setTextColor(TEXT);
+        summary.setTextSize(19);
         summary.setTypeface(Typeface.DEFAULT_BOLD);
-        summaryRow.addView(summary,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+        summary.setGravity(Gravity.RIGHT);
+        info.addView(summary);
 
         int remain=Math.max(0,totalMin-doneMin);
         TextView remainTv=muted("فاضل "+formatStudyDuration(remain));
         remainTv.setTextSize(12.5f);
+        remainTv.setTextColor(MUTED);
         remainTv.setGravity(Gravity.RIGHT);
-        summaryRow.addView(remainTv,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
-        info.addView(summaryRow);
+        info.addView(remainTv);
 
+        if(dateText!=null&&!dateText.isEmpty()&&!dateText.equals(Planner.todayStr())){
+            TextView range=muted(dateText);
+            range.setTextSize(11.5f);
+            range.setTextColor(MUTED2);
+            range.setGravity(Gravity.RIGHT);
+            info.addView(range);
+        }
         head.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
         box.addView(head);
-        box.addView(space(dp(12)));
+        box.addView(space(dp(10)));
     }
 
     private String formatStudyDuration(int min) {
@@ -2897,8 +2882,11 @@ public class MainActivity extends Activity {
 
     // ═══════════════ Tasks ═══════════════
     private View buildTasksScreen() {
+        FrameLayout root=new FrameLayout(this);
         ScrollView sc=new ScrollView(this); sc.setFillViewport(true);
-        LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(18),dp(18),dp(28));box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);sc.addView(box);
+        sc.setPadding(0,0,0,dp(92));
+        LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18),dp(18),dp(18),dp(28)); box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL); sc.addView(box);
         LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);
         TextView h=title("المهام");h.setTextSize(32);head.addView(h,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
         TextView filter=chip("العرض ▾",false);filter.setOnClickListener(v->showTaskViewChoices(v));head.addView(filter);box.addView(head);box.addView(space(dp(10)));
@@ -2908,8 +2896,30 @@ public class MainActivity extends Activity {
         tabs.addView(all,chipLp());tabs.addView(space(dp(6)));tabs.addView(lec,chipLp());tabs.addView(space(dp(6)));tabs.addView(study,chipLp());box.addView(tabs);box.addView(space(dp(14)));
         List<Planner.Task> list=new ArrayList<>(planner.tasks);if(taskKindFilter!=-1){List<Planner.Task>x=new ArrayList<>();for(Planner.Task t:list)if(t.kind==taskKindFilter)x.add(t);list=x;}list.sort(this::compareTasksForDisplay);
         if(list.isEmpty())box.addView(emptyState("مفيش مهام في القسم ده."));else for(Planner.Task t:list)box.addView(taskCard(t));
-        box.addView(space(dp(14)));TextView add=primaryBtn("+ إضافة");add.setTextSize(17);add.setOnClickListener(v->showAddTaskDialog(null));box.addView(add,fullBtnLp());
-        return sc;
+        box.addView(space(dp(110)));
+        root.addView(sc,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(fixedAddBar("إضافة مهمة",()->showAddTaskDialog(null)));
+        return root;
+    }
+
+    private View fixedAddBar(String labelText, final Runnable action) {
+        LinearLayout bar=new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER);
+        bar.setPadding(dp(14),dp(8),dp(14),dp(8));
+        bar.setBackgroundColor(BG);
+        GradientDrawable line=new GradientDrawable();
+        line.setColor(CARD);
+        line.setCornerRadius(dp(18));
+        line.setStroke(dp(1),0x334B6DFF);
+        TextView btn=primaryBtn("+ "+labelText);
+        btn.setTextSize(16);
+        btn.setOnClickListener(v->action.run());
+        bar.addView(btn,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(48)));
+        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(66));
+        lp.gravity=Gravity.BOTTOM;
+        lp.leftMargin=dp(8);lp.rightMargin=dp(8);lp.bottomMargin=dp(4);
+        return bar;
     }
 
     private void appendTaskGroup(LinearLayout box, String title, List<Planner.Task> list) {
@@ -4250,26 +4260,73 @@ public class MainActivity extends Activity {
     private View buildRoutineScreen() {
         if(showingContactUs)return buildContactUsScreen();
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
-        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(18),dp(18),dp(28));box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);sc.addView(box);
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18),dp(18),dp(18),dp(28));box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);sc.addView(box);
         TextView h=title("المزيد");h.setTextSize(32);box.addView(h);box.addView(space(dp(14)));
 
-        LinearLayout account=card();account.setGravity(Gravity.CENTER_VERTICAL);account.setPadding(dp(16),dp(14),dp(16),dp(14));
-        LinearLayout at=new LinearLayout(this);at.setOrientation(LinearLayout.VERTICAL);at.setGravity(Gravity.RIGHT);
-        TextView an=new TextView(this);an.setText("حسابك");an.setTextColor(TEXT);an.setTextSize(18);an.setTypeface(Typeface.DEFAULT_BOLD);at.addView(an);
-        at.addView(muted(AccountAuth.getCurrentAccount(this)==null?"سجّل دخول عشان تحمي بياناتك":"حسابك متصل"));
-        account.addView(at,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
-        TextView login=primaryBtn(AccountAuth.getCurrentAccount(this)==null?"تسجيل الدخول":"الحساب");login.setOnClickListener(v->{if(AccountAuth.getCurrentAccount(this)==null)showLocalLoginDialog();else{moreOpenSections.add("account");showTab(4);}});account.addView(login,new LinearLayout.LayoutParams(dp(132),dp(48)));box.addView(account);box.addView(space(dp(12)));
-
-        LinearLayout list=card();list.setOrientation(LinearLayout.VERTICAL);
-        String[] keys={"subjects","goals","daily","commitments","sleep","sessions","prayer","guide","contact"};
-        String[] labels={"المواد","الأهداف","اليوميات","الالتزامات","الاستيقاظ والنوم والتجهيز","مدة الجلسة والراحة","إعدادات الصلاة","الدليل","تواصل معنا"};
-        for(int i=0;i<keys.length;i++){final String key=keys[i];TextView row=new TextView(this);row.setText(labels[i]+"                                      ‹");row.setTextColor(TEXT);row.setTextSize(16);row.setGravity(Gravity.CENTER_VERTICAL|Gravity.RIGHT);row.setPadding(dp(8),dp(15),dp(8),dp(15));row.setClickable(true);
-            row.setOnClickListener(v->{if("contact".equals(key)){openContactUsScreen();return;}if("goals".equals(key)){showAddGoalDialog();return;} if("daily".equals(key)){showAddJournalDialog();return;}if(moreOpenSections.contains(key))moreOpenSections.remove(key);else moreOpenSections.add(key);showTab(4);});
-            list.addView(row);if(i<keys.length-1){View dv=new View(this);dv.setBackgroundColor(0x142B3545);list.addView(dv,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,1));}
-            if(moreOpenSections.contains(key)&&!"contact".equals(key)&&!"goals".equals(key)&&!"daily".equals(key)){View body=null;if("subjects".equals(key))body=moreSubjectsBody();else if("commitments".equals(key))body=morePlanBody();else if("sleep".equals(key))body=moreSleepBody();else if("sessions".equals(key))body=moreSessionsBody();else if("prayer".equals(key))body=morePrayerBody();else if("guide".equals(key))body=moreGuideBody();if(body!=null){list.addView(space(dp(8)));list.addView(body);list.addView(space(dp(8)));}}
+        LinearLayout settings=card(); settings.setOrientation(LinearLayout.VERTICAL);
+        String[] keys={"subjects","sessions","sleep","commitments","guide"};
+        String[] labels={"المواد","مدة الجلسة والراحة","الاستيقاظ والنوم والتجهيز","الالتزامات","دليل المستخدم"};
+        for(int i=0;i<keys.length;i++){
+            final String key=keys[i];
+            boolean open=moreOpenSections.contains(key);
+            TextView row=new TextView(this);
+            row.setText((open?"▾  ":"‹  ")+labels[i]);
+            row.setTextColor(open?ACCENT:TEXT);
+            row.setTextSize(16);
+            row.setTypeface(open?Typeface.DEFAULT_BOLD:Typeface.DEFAULT);
+            row.setGravity(Gravity.CENTER_VERTICAL|Gravity.RIGHT);
+            row.setPadding(dp(8),dp(15),dp(8),dp(15));
+            row.setOnClickListener(v->{if(moreOpenSections.contains(key))moreOpenSections.remove(key);else moreOpenSections.add(key);showTab(4);});
+            settings.addView(row);
+            if(i<keys.length-1){View dv=new View(this);dv.setBackgroundColor(0x142B3545);settings.addView(dv,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,1));}
+            if(open){
+                View body=null;
+                if("subjects".equals(key))body=moreSubjectsBody();
+                else if("sessions".equals(key))body=moreSessionsBody();
+                else if("sleep".equals(key))body=moreSleepBody();
+                else if("commitments".equals(key))body=morePlanBody();
+                else if("guide".equals(key))body=moreGuideBody();
+                if(body!=null){settings.addView(space(dp(8)));settings.addView(body);settings.addView(space(dp(8)));}
+            }
         }
-        box.addView(list);return sc;
+        box.addView(settings);
+
+        box.addView(space(dp(12)));
+        LinearLayout contact=card();contact.setOrientation(LinearLayout.HORIZONTAL);contact.setGravity(Gravity.CENTER_VERTICAL);
+        TextView ct=new TextView(this);ct.setText("تواصل معنا");ct.setTextColor(TEXT);ct.setTextSize(17);ct.setTypeface(Typeface.DEFAULT_BOLD);
+        contact.addView(ct,new LinearLayout.LayoutParams(0,dp(58),1f));
+        TextView ca=muted("‹");ca.setTextSize(24);contact.addView(ca,new LinearLayout.LayoutParams(dp(34),dp(58)));
+        contact.setOnClickListener(v->openContactUsScreen());
+        box.addView(contact);
+
+        box.addView(space(dp(12)));
+        LinearLayout account=card();account.setOrientation(LinearLayout.HORIZONTAL);account.setGravity(Gravity.CENTER_VERTICAL);
+        TextView ac=new TextView(this);ac.setText("الحساب");ac.setTextColor(TEXT);ac.setTextSize(17);ac.setTypeface(Typeface.DEFAULT_BOLD);
+        account.addView(ac,new LinearLayout.LayoutParams(0,dp(58),1f));
+        TextView accountState=muted(AccountAuth.getCurrentAccount(this)==null?"تسجيل الدخول":"فتح الحساب");
+        account.addView(accountState);
+        account.setOnClickListener(v->{
+            if(AccountAuth.getCurrentAccount(this)==null) showLocalLoginDialog();
+            else { moreOpenSections.add("account"); showTab(4); }
+        });
+        box.addView(account);
+
+        box.addView(space(dp(14)));
+        TextView ver=muted("My Plan · الإصدار "+getAppVersionName());
+        ver.setGravity(Gravity.CENTER);
+        ver.setTextSize(11);
+        ver.setTextColor(MUTED2);
+        box.addView(ver);
+        return sc;
     }
+
+    private String getAppVersionName() {
+        try { return getPackageManager().getPackageInfo(getPackageName(),0).versionName; }
+        catch(Exception e){ return "1.0"; }
+    }
+
+
 
     private LinearLayout moreExpandableCard(String key, String titleAr, View body) {
         LinearLayout card = card();
@@ -4898,7 +4955,8 @@ public class MainActivity extends Activity {
     }
 
     private View buildExamsScreen() {
-        ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
+        FrameLayout root=new FrameLayout(this);
+        ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setPadding(0,0,0,dp(92));
         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(18),dp(18),dp(28));box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);sc.addView(box);
         TextView h=title("الامتحانات");h.setTextSize(32);box.addView(h);box.addView(space(dp(14)));
         if(planner.exams.isEmpty())box.addView(emptyState("لا توجد امتحانات مضافة."));
@@ -4916,7 +4974,10 @@ public class MainActivity extends Activity {
                 ex.setOnClickListener(v->showExamDialog(e));LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);ep.bottomMargin=dp(10);ex.setLayoutParams(ep);box.addView(ex);
             }
         }
-        box.addView(space(dp(12)));TextView add=primaryBtn("+ إضافة امتحان");add.setTextSize(17);add.setOnClickListener(v->showExamDialog(null));box.addView(add,fullBtnLp());return sc;
+        box.addView(space(dp(110)));
+        root.addView(sc,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(fixedAddBar("إضافة امتحان",()->showExamDialog(null)));
+        return root;
     }
 
     private void showExamDialog(Planner.Exam existing) {
