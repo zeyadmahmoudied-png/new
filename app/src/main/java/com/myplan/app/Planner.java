@@ -4115,6 +4115,7 @@ public String adjustSessionDuration(String sessionId, int newDur) {
             s.backlog = t.backlog;
             s.taskName = t.name;
             s.subject = t.subject;
+            s.lecturer = t.lecturer == null ? "" : t.lecturer;
             if (s.done) {
                 doneMin += s.durationMin;
                 doneCount++;
@@ -4151,6 +4152,7 @@ public String adjustSessionDuration(String sessionId, int newDur) {
                 s.backlog = t.backlog;
                 s.taskName = t.name;
                 s.subject = t.subject;
+                s.lecturer = t.lecturer == null ? "" : t.lecturer;
             }
         }
         save();
