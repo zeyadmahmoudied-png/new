@@ -588,19 +588,24 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    private void setScheduleModeTabStyle(TextView tv, boolean selected) {
+        tv.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        tv.setTextColor(selected ? Color.WHITE : MUTED);
+        android.graphics.drawable.Drawable base = new android.graphics.drawable.ColorDrawable(0x00000000);
+        android.graphics.drawable.Drawable line = new android.graphics.drawable.ColorDrawable(selected ? ACCENT : 0x00000000);
+        android.graphics.drawable.InsetDrawable inset = new android.graphics.drawable.InsetDrawable(
+                line, 0, dp(39), 0, 0);
+        tv.setBackground(new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{base, inset}));
+    }
+
     private TextView scheduleModeTab(String text, boolean selected) {
         TextView tv = new TextView(this);
         tv.setText(text);
         tv.setGravity(Gravity.CENTER);
         tv.setTextSize(16);
-        tv.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-        tv.setTextColor(selected ? Color.WHITE : MUTED);
         tv.setPadding(0, dp(8), 0, dp(7));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0x00000000);
-        tv.setBackground(bg);
-        tv.setTag(selected ? "selected" : "normal");
-        tv.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+        setScheduleModeTabStyle(tv, selected);
         return tv;
     }
 
