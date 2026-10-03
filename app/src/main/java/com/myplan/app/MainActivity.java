@@ -591,12 +591,21 @@ public class MainActivity extends Activity {
     private void setScheduleModeTabStyle(TextView tv, boolean selected) {
         tv.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
         tv.setTextColor(selected ? Color.WHITE : MUTED);
-        android.graphics.drawable.Drawable base = new android.graphics.drawable.ColorDrawable(0x00000000);
-        android.graphics.drawable.Drawable line = new android.graphics.drawable.ColorDrawable(selected ? ACCENT : 0x00000000);
-        android.graphics.drawable.InsetDrawable inset = new android.graphics.drawable.InsetDrawable(
-                line, 0, dp(39), 0, 0);
-        tv.setBackground(new android.graphics.drawable.LayerDrawable(
-                new android.graphics.drawable.Drawable[]{base, inset}));
+        tv.setGravity(Gravity.CENTER);
+        tv.setPadding(0,dp(8),0,dp(7));
+        android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();
+        bg.setColor(0x00000000);
+        bg.setCornerRadius(dp(8));
+        if(selected){
+            bg.setStroke(dp(1),0x00000000);
+            android.graphics.drawable.LayerDrawable layer=new android.graphics.drawable.LayerDrawable(
+                    new android.graphics.drawable.Drawable[]{bg,
+                            new android.graphics.drawable.InsetDrawable(
+                                    new android.graphics.drawable.ColorDrawable(ACCENT),0,dp(40),0,0)});
+            tv.setBackground(layer);
+        }else{
+            tv.setBackground(bg);
+        }
     }
 
     private TextView scheduleModeTab(String text, boolean selected) {
@@ -649,8 +658,9 @@ public class MainActivity extends Activity {
         top.addView(more,new LinearLayout.LayoutParams(dp(48),dp(48)));
         box.addView(top); box.addView(space(dp(10)));
 
+        // تبويبات الجدول: ثلاث اختيارات واضحة في نصف الشاشة الأيمن.
         LinearLayout tabsWrap=new LinearLayout(this);
-        tabsWrap.setGravity(Gravity.CENTER);
+        tabsWrap.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         tabsWrap.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         LinearLayout tabs=new LinearLayout(this);
         tabs.setGravity(Gravity.CENTER_VERTICAL);
@@ -661,9 +671,13 @@ public class MainActivity extends Activity {
         d.setOnClickListener(v->{scheduleViewMode=0;weekView=false;showTab(0);});
         w.setOnClickListener(v->{scheduleViewMode=1;weekView=true;showTab(6);});
         cu.setOnClickListener(v->{scheduleViewMode=2;weekView=true;showTab(6);});
-        tabs.addView(d,scheduleModeTabLp()); tabs.addView(w,scheduleModeTabLp()); tabs.addView(cu,scheduleModeTabLp());
-        tabsWrap.addView(tabs,new LinearLayout.LayoutParams(dp(210),dp(44)));
-        box.addView(tabsWrap); box.addView(space(dp(12)));
+        tabs.addView(d,scheduleModeTabLp());
+        tabs.addView(w,scheduleModeTabLp());
+        tabs.addView(cu,scheduleModeTabLp());
+        int halfScreen=Math.max(dp(210), getResources().getDisplayMetrics().widthPixels/2);
+        tabsWrap.addView(tabs,new LinearLayout.LayoutParams(halfScreen,dp(44)));
+        box.addView(tabsWrap);
+        box.addView(space(dp(16)));
 
         if(scheduleViewMode==0){
             List<Planner.Session> today=planner.sessionsForDay(Planner.todayStr());
@@ -4259,73 +4273,137 @@ public class MainActivity extends Activity {
 
     private View buildRoutineScreen() {
         if(showingContactUs)return buildContactUsScreen();
-        ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
-        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18),dp(18),dp(18),dp(28));box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);sc.addView(box);
-        TextView h=title("المزيد");h.setTextSize(32);box.addView(h);box.addView(space(dp(14)));
 
-        LinearLayout settings=card(); settings.setOrientation(LinearLayout.VERTICAL);
-        String[] keys={"subjects","sessions","sleep","commitments","guide"};
-        String[] labels={"المواد","مدة الجلسة والراحة","الاستيقاظ والنوم والتجهيز","الالتزامات","دليل المستخدم"};
+        ScrollView sc=new ScrollView(this);
+        sc.setFillViewport(true);
+        LinearLayout box=new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18),dp(18),dp(18),dp(28));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        sc.addView(box);
+
+        TextView h=title("المزيد");
+        h.setTextSize(32);
+        box.addView(h);
+        box.addView(space(dp(14)));
+
+        // الإعدادات الأساسية — كل قسم مستقل وواضح.
+        String[] keys={"subjects","prayer","sleep","planning","sessions","alarms","guide"};
+        String[] labels={"المواد","الصلاة","النوم","التخطيط","الجلسات","التنبيهات","دليل المستخدم"};
+
         for(int i=0;i<keys.length;i++){
             final String key=keys[i];
+            final String rowLabel=labels[i];
+            LinearLayout section=card();
+            section.setOrientation(LinearLayout.VERTICAL);
+
             boolean open=moreOpenSections.contains(key);
             TextView row=new TextView(this);
-            row.setText((open?"▾  ":"‹  ")+labels[i]);
+            row.setText((open?"▾  ":"‹  ")+rowLabel);
             row.setTextColor(open?ACCENT:TEXT);
-            row.setTextSize(16);
+            row.setTextSize(17);
             row.setTypeface(open?Typeface.DEFAULT_BOLD:Typeface.DEFAULT);
             row.setGravity(Gravity.CENTER_VERTICAL|Gravity.RIGHT);
-            row.setPadding(dp(8),dp(15),dp(8),dp(15));
-            row.setOnClickListener(v->{if(moreOpenSections.contains(key))moreOpenSections.remove(key);else moreOpenSections.add(key);showTab(4);});
-            settings.addView(row);
-            if(i<keys.length-1){View dv=new View(this);dv.setBackgroundColor(0x142B3545);settings.addView(dv,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,1));}
+            row.setPadding(dp(10),dp(16),dp(10),dp(16));
+            section.addView(row);
+
             if(open){
                 View body=null;
-                if("subjects".equals(key))body=moreSubjectsBody();
-                else if("sessions".equals(key))body=moreSessionsBody();
-                else if("sleep".equals(key))body=moreSleepBody();
-                else if("commitments".equals(key))body=morePlanBody();
-                else if("guide".equals(key))body=moreGuideBody();
-                if(body!=null){settings.addView(space(dp(8)));settings.addView(body);settings.addView(space(dp(8)));}
-            }
-        }
-        box.addView(settings);
+                if("subjects".equals(key)) body=moreSubjectsBody();
+                else if("prayer".equals(key)) body=morePrayerBody();
+                else if("sleep".equals(key)) body=moreSleepBody();
+                else if("planning".equals(key)) body=morePlanBody();
+                else if("sessions".equals(key)) body=moreSessionsBody();
+                else if("alarms".equals(key)) body=moreAlarmsBody();
+                else if("guide".equals(key)) body=moreGuideBody();
 
-        box.addView(space(dp(12)));
-        LinearLayout contact=card();contact.setOrientation(LinearLayout.HORIZONTAL);contact.setGravity(Gravity.CENTER_VERTICAL);
-        TextView ct=new TextView(this);ct.setText("تواصل معنا");ct.setTextColor(TEXT);ct.setTextSize(17);ct.setTypeface(Typeface.DEFAULT_BOLD);
-        contact.addView(ct,new LinearLayout.LayoutParams(0,dp(58),1f));
-        TextView ca=muted("‹");ca.setTextSize(24);contact.addView(ca,new LinearLayout.LayoutParams(dp(34),dp(58)));
+                if(body!=null){
+                    View divider=new View(this);
+                    divider.setBackgroundColor(0x142B3545);
+                    section.addView(divider,new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,1));
+                    section.addView(space(dp(6)));
+                    section.addView(body);
+                    section.addView(space(dp(10)));
+                }
+            }
+
+            row.setOnClickListener(v->{
+                if(moreOpenSections.contains(key)) moreOpenSections.remove(key);
+                else {
+                    moreOpenSections.clear();
+                    moreOpenSections.add(key);
+                }
+                showTab(4);
+            });
+
+            box.addView(section);
+            box.addView(space(dp(9)));
+        }
+
+        // تواصل معنا في خانة مستقلة.
+        LinearLayout contact=card();
+        contact.setOrientation(LinearLayout.HORIZONTAL);
+        contact.setGravity(Gravity.CENTER_VERTICAL);
+        TextView ct=new TextView(this);
+        ct.setText("تواصل معنا");
+        ct.setTextColor(TEXT);
+        ct.setTextSize(17);
+        ct.setTypeface(Typeface.DEFAULT_BOLD);
+        contact.addView(ct,new LinearLayout.LayoutParams(0,dp(60),1f));
+        TextView ca=muted("‹");
+        ca.setTextSize(24);
+        contact.addView(ca,new LinearLayout.LayoutParams(dp(34),dp(60)));
         contact.setOnClickListener(v->openContactUsScreen());
         box.addView(contact);
+        box.addView(space(dp(9)));
 
-        box.addView(space(dp(12)));
-        LinearLayout account=card();account.setOrientation(LinearLayout.HORIZONTAL);account.setGravity(Gravity.CENTER_VERTICAL);
-        TextView ac=new TextView(this);ac.setText("الحساب");ac.setTextColor(TEXT);ac.setTextSize(17);ac.setTypeface(Typeface.DEFAULT_BOLD);
-        account.addView(ac,new LinearLayout.LayoutParams(0,dp(58),1f));
-        TextView accountState=muted(AccountAuth.getCurrentAccount(this)==null?"تسجيل الدخول":"فتح الحساب");
-        account.addView(accountState);
+        // الحساب — عند فتحه يظهر زر تسجيل الخروج بوضوح.
+        LinearLayout account=card();
+        account.setOrientation(LinearLayout.VERTICAL);
+        account.setPadding(dp(14),dp(10),dp(14),dp(10));
+
+        LinearLayout accountHead=new LinearLayout(this);
+        accountHead.setOrientation(LinearLayout.HORIZONTAL);
+        accountHead.setGravity(Gravity.CENTER_VERTICAL);
+        TextView ac=new TextView(this);
+        ac.setText("الحساب");
+        ac.setTextColor(TEXT);
+        ac.setTextSize(17);
+        ac.setTypeface(Typeface.DEFAULT_BOLD);
+        accountHead.addView(ac,new LinearLayout.LayoutParams(0,dp(54),1f));
+        TextView accountState=muted(AccountAuth.getCurrentAccount(this)==null?"تسجيل الدخول":"الحساب مفتوح");
+        accountHead.addView(accountState);
+        account.addView(accountHead);
+
         account.setOnClickListener(v->{
             AccountAuth.Account acc=AccountAuth.getCurrentAccount(this);
-            if(acc==null){ showLocalLoginDialog(); return; }
+            if(acc==null){
+                showLocalLoginDialog();
+                return;
+            }
             String name=(acc.displayName!=null&&!acc.displayName.trim().isEmpty())?acc.displayName.trim():"—";
             String email=(acc.email!=null&&!acc.email.isEmpty())?acc.email:"—";
             String uid=(acc.userId!=null&&!acc.userId.isEmpty())?acc.userId:"—";
             myDialog().setTitle("الحساب")
                     .setMessage("الاسم: "+name+"\nالبريد: "+email+"\nمعرّف الحساب: "+uid)
-                    .setPositiveButton("حسنًا",null)
+                    .setPositiveButton("تسجيل الخروج", (d,w)->showLogoutWithBackupPrompt())
+                    .setNegativeButton("إغلاق",null)
                     .show();
         });
         box.addView(account);
-
         box.addView(space(dp(14)));
+
+        // الإصدار ظاهر دائمًا في أسفل الصفحة؛ الضغط المطوّل فقط يفتح مركز المطور.
         TextView ver=muted("My Plan · الإصدار "+getAppVersionName());
         ver.setGravity(Gravity.CENTER);
-        ver.setTextSize(11);
-        ver.setTextColor(MUTED2);
+        ver.setTextSize(12);
+        ver.setTextColor(MUTED);
+        ver.setPadding(0,dp(8),0,dp(8));
+        ver.setSingleLine(false);
         ver.setOnLongClickListener(v->{promptDeveloperPassword();return true;});
         box.addView(ver);
+
         return sc;
     }
 
