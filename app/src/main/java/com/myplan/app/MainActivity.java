@@ -2921,19 +2921,21 @@ public class MainActivity extends Activity {
         LinearLayout bar=new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER);
-        bar.setPadding(dp(14),dp(8),dp(14),dp(8));
+        bar.setPadding(dp(12),dp(8),dp(12),dp(8));
         bar.setBackgroundColor(BG);
-        GradientDrawable line=new GradientDrawable();
-        line.setColor(CARD);
-        line.setCornerRadius(dp(18));
-        line.setStroke(dp(1),0x334B6DFF);
+
         TextView btn=primaryBtn("+ "+labelText);
         btn.setTextSize(16);
         btn.setOnClickListener(v->action.run());
-        bar.addView(btn,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(48)));
-        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(66));
+        bar.addView(btn,new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,dp(48)));
+
+        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,dp(64));
         lp.gravity=Gravity.BOTTOM;
-        lp.leftMargin=dp(8);lp.rightMargin=dp(8);lp.bottomMargin=dp(4);
+        lp.leftMargin=0;
+        lp.rightMargin=0;
+        lp.bottomMargin=0;
         return bar;
     }
 
