@@ -36,6 +36,8 @@ public class Planner {
         public String id;
         public String name;
         public String subject;
+        /** اسم المحاضر اختياري، ويُحفظ مع المهمة والجلسات. */
+        public String lecturer;
         public int durationMin;
         public int priority; // 0..2
         public String deadline;
@@ -66,6 +68,7 @@ public class Planner {
             id = UUID.randomUUID().toString();
             name = "";
             subject = "عام";
+            lecturer = "";
             durationMin = 60;
             priority = 1;
             deadline = "";
@@ -113,6 +116,7 @@ public class Planner {
             o.put("id", id);
             o.put("name", name);
             o.put("subject", subject);
+            o.put("lecturer", lecturer == null ? "" : lecturer);
             o.put("durationMin", durationMin);
             o.put("priority", priority);
             o.put("deadline", deadline == null ? "" : deadline);
@@ -137,6 +141,7 @@ public class Planner {
             t.id = o.optString("id", UUID.randomUUID().toString());
             t.name = o.optString("name", "");
             t.subject = o.optString("subject", "عام");
+            t.lecturer = o.optString("lecturer", "");
             t.durationMin = o.optInt("durationMin", 60);
             // migration: old 0..3 -> clamp to 0..2 (3 عاجلة -> 2 عالية)
             int p = o.optInt("priority", 1);
@@ -286,6 +291,7 @@ public class Planner {
         public boolean done;
         public String taskName;
         public String subject;
+        public String lecturer;
         public int sessionIndex;
         public int sessionTotal;
         public int priority;
@@ -321,6 +327,7 @@ public class Planner {
             o.put("done", done);
             o.put("taskName", taskName);
             o.put("subject", subject);
+            o.put("lecturer", lecturer == null ? "" : lecturer);
             o.put("sessionIndex", sessionIndex);
             o.put("sessionTotal", sessionTotal);
             o.put("priority", priority);
@@ -342,6 +349,7 @@ public class Planner {
             s.done = o.optBoolean("done", false);
             s.taskName = o.optString("taskName", "");
             s.subject = o.optString("subject", "");
+            s.lecturer = o.optString("lecturer", "");
             s.sessionIndex = o.optInt("sessionIndex", 1);
             s.sessionTotal = o.optInt("sessionTotal", 1);
             s.priority = Math.max(0, Math.min(2, o.optInt("priority", 1)));
@@ -1909,6 +1917,7 @@ public class Planner {
             s.durationMin = piece;
             s.taskName = t.name;
             s.subject = t.subject;
+            s.lecturer = t.lecturer == null ? "" : t.lecturer;
             s.sessionIndex = already + placed + 1;
             s.sessionTotal = Math.max(totalParts, already + placed + 1);
             s.priority = t.priority;
@@ -2336,6 +2345,7 @@ public class Planner {
                     s.durationMin = piece;
                     s.taskName = pick.name;
                     s.subject = pick.subject;
+                    s.lecturer = pick.lecturer == null ? "" : pick.lecturer;
                     int already = scheduledCount.getOrDefault(taskId, 0);
                     s.sessionIndex = already + 1;
                     s.sessionTotal = Math.max(1, (int) Math.ceil(pick.durationMin / (double) sm));
