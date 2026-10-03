@@ -880,7 +880,7 @@ public class MainActivity extends Activity {
                 moreBtn.setTextSize(18);
                 moreBtn.setTextColor(Color.WHITE);
                 moreBtn.setOnClickListener(v->showSessionMoreDialog(currentS));
-                actions.addView(moreBtn,new LinearLayout.LayoutParams(0,dp(46),.55f));
+                actions.addView(moreBtn,new LinearLayout.LayoutParams(0,dp(50),.55f));
                 nowCard.addView(actions);
             } else if(nextS!=null){
                 nowCard.addView(muted("القادمة"));
