@@ -1873,7 +1873,7 @@ public class MainActivity extends Activity {
                     0xFFFF1744, 0xFFFF3D00, 0xFFFF6D00, 0xFFFFAB00, 0xFFFFD600,
                     0xFFFFFF00, 0xFFB2FF00, 0xFF64DD17, 0xFF00E676, 0xFF00FF87
             };
-            int idx = Math.min(9, Math.max(0, pct / 10));
+            int idx = Math.min(9, Math.max(0, (Math.max(1, pct) - 1) / 10));
             return colors[idx];
         }
 
