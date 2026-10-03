@@ -3843,7 +3843,7 @@ public class MainActivity extends Activity {
         LinearLayout metrics=new LinearLayout(this);metrics.setGravity(Gravity.CENTER);
         int hours=Math.max(0,planner.doneMinutes())/60,finished=0;for(Planner.Session ss:planner.sessions)if(ss!=null&&ss.done)finished++;
         int streak=0;int[] p7=lastSevenDayProgress();for(int i=6;i>=0;i--){if(p7[i]>0)streak++;else break;}
-        metrics.addView(statMetricCard("ساعات المذاكرة",String.valueOf(hours)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("جلسات خلصت",String.valueOf(finished)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("أيام متتالية",String.valueOf(streak)));box.addView(metrics);
+        int remainingTasks=0; for(Planner.Task tt:planner.tasks) if(tt!=null&&!tt.done) remainingTasks++;\n        metrics.addView(statMetricCard("المذاكرة",String.valueOf(hours)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المهام المكتملة",String.valueOf(finished)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المهام المتبقية",String.valueOf(remainingTasks)));box.addView(metrics);
         box.addView(space(dp(14)));LinearLayout chart=card();TextView ct=muted("آخر 7 أيام");ct.setTextColor(TEXT);ct.setTextSize(16);ct.setTypeface(Typeface.DEFAULT_BOLD);ct.setGravity(Gravity.RIGHT);chart.addView(ct);chart.addView(space(dp(8)));
         SevenDayProgressChart ch=new SevenDayProgressChart(this);ch.setDays(lastSevenDayProgress(),lastSevenDayLabels());chart.addView(ch,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(180)));box.addView(chart);
         return sc;
@@ -3919,7 +3919,7 @@ public class MainActivity extends Activity {
             p.setStrokeCap(Paint.Cap.ROUND);
             rect.set(cx-r,cy-r,cx+r,cy+r);
 
-            p.setColor(0x334B6DFF);
+            p.setColor(0x664B6DFF);
             p.setShader(null);
             canvas.drawArc(rect,-90,360,false,p);
 
