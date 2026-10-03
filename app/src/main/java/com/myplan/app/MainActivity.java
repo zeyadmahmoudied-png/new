@@ -858,7 +858,7 @@ public class MainActivity extends Activity {
                 TextView moreBtn=ghostBtn("•••");
                 moreBtn.setTextSize(18);
                 moreBtn.setTextColor(Color.WHITE);
-                moreBtn.setOnClickListener(v->showAdjustDurationDialog(currentS));
+                moreBtn.setOnClickListener(v->showSessionMoreDialog(currentS));
                 actions.addView(moreBtn,new LinearLayout.LayoutParams(0,dp(46),.55f));
                 nowCard.addView(actions);
             } else if(nextS!=null){
@@ -1055,6 +1055,10 @@ public class MainActivity extends Activity {
             actions.addView(mark);
             actions.addView(space(dp(12)));
             // «نقل» أُزيل من الواجهة — التعديل عبر قلم اليوم (تأجيل بالدقائق)
+            TextView postpone = link("تأجيل");
+            postpone.setOnClickListener(v -> showPostponeSessionDialog(s));
+            actions.addView(postpone);
+            actions.addView(space(dp(12)));
             TextView dur = link("المدة");
             dur.setOnClickListener(v -> showAdjustDurationDialog(s));
             actions.addView(dur);
@@ -1418,6 +1422,29 @@ public class MainActivity extends Activity {
         };
         if (content != null) content.post(work);
         else work.run();
+    }
+
+    /** خيارات زر المزيد في كارت السيشن الحالية — نحافظ على كل وظائف الكارت الجديدة. */
+    private void showSessionMoreDialog(Planner.Session s) {
+        if (s == null || s.done) {
+            Toast.makeText(this, "لا يمكن تعديل جلسة مكتملة", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String sid = s.id;
+        String[] options = {"تأجيل / تقديم الموعد", "تعديل مدة السيشن"};
+        myDialog().setTitle("خيارات السيشن")
+                .setItems(options, (d, which) -> {
+                    if (which == 0) {
+                        content.post(() -> showPostponeSessionDialog(s));
+                    } else {
+                        content.post(() -> {
+                            Planner.Session fresh = planner.findSessionById(sid);
+                            if (fresh != null) showAdjustDurationDialog(fresh);
+                        });
+                    }
+                })
+                .setNegativeButton("إلغاء", null)
+                .show();
     }
 
     /** حوار تعديل موعد جلسة: تأجيل أو أعملها بدري — وضع تعديل اليوم */
