@@ -787,6 +787,14 @@ public class MainActivity extends Activity {
             dayTitle.setTextSize(18);
             dayTitle.setTypeface(Typeface.DEFAULT_BOLD);
             dayHead.addView(dayTitle,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+            TextView pencil = ghostBtn(dayEditMode ? "✓" : "✏️");
+            pencil.setTextSize(14);
+            pencil.setOnClickListener(v -> {
+                dayEditMode = !dayEditMode;
+                Toast.makeText(this, dayEditMode ? "وضع تعديل وترتيب المحاضرات مفعّل" : "تم إيقاف وضع التعديل", Toast.LENGTH_SHORT).show();
+                showTab(0);
+            });
+            dayHead.addView(pencil,new LinearLayout.LayoutParams(dp(44),dp(38)));
             dayHead.addView(muted(day),new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT));
             box.addView(dayHead);
             box.addView(space(dp(8)));
@@ -803,7 +811,8 @@ public class MainActivity extends Activity {
             final Planner.Session currentS=current, nextS=next;
             LinearLayout nowCard=card();
             nowCard.setOrientation(LinearLayout.VERTICAL);
-            nowCard.setPadding(dp(16),dp(14),dp(16),dp(14));
+            nowCard.setPadding(dp(18),dp(18),dp(18),dp(18));
+            nowCard.setMinimumHeight(dp(220));
             GradientDrawable nowBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                     new int[]{0xFF243D78,0xFF5B43C9});
             nowBg.setCornerRadius(dp(20));
@@ -823,12 +832,24 @@ public class MainActivity extends Activity {
                 else mainLine=!subjectText.isEmpty()?subjectText:lectureText;
                 n.setText(mainLine);
                 n.setTextColor(Color.WHITE);
-                n.setTextSize(22);
+                n.setTextSize(24);
                 n.setTypeface(Typeface.DEFAULT_BOLD);
                 n.setMaxLines(2);
                 n.setGravity(Gravity.RIGHT);
                 n.setPadding(0,dp(4),0,0);
                 nowCard.addView(n);
+
+                String lecturerText = currentS.lecturer == null ? "" : currentS.lecturer.trim();
+                if (!lecturerText.isEmpty()) {
+                    TextView lecturer = new TextView(this);
+                    lecturer.setText(lecturerText);
+                    lecturer.setTextColor(Color.WHITE);
+                    lecturer.setTextSize(17);
+                    lecturer.setTypeface(Typeface.DEFAULT_BOLD);
+                    lecturer.setGravity(Gravity.RIGHT);
+                    lecturer.setPadding(0, dp(4), 0, 0);
+                    nowCard.addView(lecturer);
+                }
 
                 int remaining=Math.max(0,(currentS.endMin<=currentS.startMin?currentS.endMin+24*60:currentS.endMin)-nowM);
                 TextView duration=muted("المدة: "+Math.max(1,currentS.durationMin)+" د · متبقي "+remaining+" د");
@@ -845,14 +866,14 @@ public class MainActivity extends Activity {
                 TextView startBtn=primaryBtn("ابدأ");
                 startBtn.setTextSize(16);
                 startBtn.setOnClickListener(v->openTimer(currentS));
-                actions.addView(startBtn,new LinearLayout.LayoutParams(0,dp(46),1f));
+                actions.addView(startBtn,new LinearLayout.LayoutParams(0,dp(50),1f));
 
                 actions.addView(space(dp(7)));
                 TextView doneBtn=ghostBtn("✓");
                 doneBtn.setTextSize(20);
                 doneBtn.setTextColor(Color.WHITE);
                 doneBtn.setOnClickListener(v->finishSessionWithChoice(currentS));
-                actions.addView(doneBtn,new LinearLayout.LayoutParams(0,dp(46),.55f));
+                actions.addView(doneBtn,new LinearLayout.LayoutParams(0,dp(50),.55f));
 
                 actions.addView(space(dp(7)));
                 TextView moreBtn=ghostBtn("•••");
@@ -880,7 +901,19 @@ public class MainActivity extends Activity {
             }
             box.addView(nowCard);
             box.addView(space(dp(10)));
-            box.addView(sectionHeader("لاحقًا"));
+            LinearLayout laterHead = new LinearLayout(this);
+            laterHead.setGravity(Gravity.CENTER_VERTICAL);
+            TextView laterTitle = sectionHeader("لاحقًا");
+            laterHead.addView(laterTitle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            TextView pencil = ghostBtn(dayEditMode ? "✓" : "✏️");
+            pencil.setTextSize(16);
+            pencil.setOnClickListener(v -> {
+                dayEditMode = !dayEditMode;
+                Toast.makeText(this, dayEditMode ? "وضع تعديل وترتيب المحاضرات مفعّل" : "تم إيقاف وضع التعديل", Toast.LENGTH_SHORT).show();
+                showTab(0);
+            });
+            laterHead.addView(pencil, new LinearLayout.LayoutParams(dp(48), dp(40)));
+            box.addView(laterHead);
             box.addView(space(dp(6)));
         }
 
@@ -1836,11 +1869,12 @@ public class MainActivity extends Activity {
 
         private int gaugeColorFor(float p) {
             int pct = Math.round(Math.max(0f, Math.min(1f, p)) * 100f);
-            if (pct <= 24) return 0xFFE25563;      // أحمر
-            if (pct <= 49) return 0xFFF0883A;      // برتقالي
-            if (pct <= 74) return 0xFFE6B84D;      // أصفر
-            if (pct <= 89) return 0xFF7DCF6E;      // أخضر فاتح
-            return 0xFF3DCF8E;                     // أخضر قوي
+            final int[] colors = {
+                    0xFFFF1744, 0xFFFF3D00, 0xFFFF6D00, 0xFFFFAB00, 0xFFFFD600,
+                    0xFFFFFF00, 0xFFB2FF00, 0xFF64DD17, 0xFF00E676, 0xFF00FF87
+            };
+            int idx = Math.min(9, Math.max(0, pct / 10));
+            return colors[idx];
         }
 
         void setProgress(float p) {
@@ -3573,6 +3607,11 @@ public class MainActivity extends Activity {
         }));
         form.addView(subject);
 
+        form.addView(label("اسم المحاضر (اختياري)"));
+        EditText lecturerEt = dialogField();
+        lecturerEt.setHint("اسم المحاضر");
+        form.addView(lecturerEt);
+
         form.addView(label("مدة المهمة كاملة (دقيقة)"));
         EditText durationEt = dialogField();
         durationEt.setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -3759,6 +3798,7 @@ public class MainActivity extends Activity {
         if (existing != null) {
             name.setText(existing.name);
             subject.setText(existing.subject);
+            lecturerEt.setText(existing.lecturer == null ? "" : existing.lecturer);
             durationEt.setText(String.valueOf(existing.durationMin));
             if (existing.deadline != null && !existing.deadline.isEmpty()) {
                 deadline[0] = existing.deadline;
@@ -3799,6 +3839,7 @@ public class MainActivity extends Activity {
                 int prevDuration = isNew ? 0 : existing.durationMin;
                 t.name = n;
                 t.subject = sub;
+                t.lecturer = lecturerEt.getText() == null ? "" : lecturerEt.getText().toString().trim();
                 t.durationMin = total;
                 t.applySessionCount(scount);
                 if (isNew) t.remainingMin = t.durationMin;
