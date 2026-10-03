@@ -6685,6 +6685,34 @@ public class MainActivity extends Activity {
             box.addView(space(dp(12)));
         }
 
+        LinearLayout remoteCard = card();
+        remoteCard.setOrientation(LinearLayout.VERTICAL);
+        remoteCard.addView(devRow("Supabase", com.myplan.app.supabase.SupabaseConfig.isConfigured(this)
+                ? "CONFIGURED" : "NOT_CONFIGURED"));
+        remoteCard.addView(devRow("Remote Sync", com.myplan.app.supabase.RemoteSyncCoordinator.lastStatus));
+        TextView syncNow = chip("مزامنة مركز المطور الآن", true);
+        syncNow.setOnClickListener(v -> {
+            syncNow.setEnabled(false);
+            new Thread(() -> {
+                String status;
+                try {
+                    status = com.myplan.app.supabase.RemoteSyncCoordinator.doSync(getApplicationContext());
+                } catch (Exception e) {
+                    status = "error";
+                }
+                final String finalStatus = status;
+                runOnUiThread(() -> {
+                    syncNow.setEnabled(true);
+                    Toast.makeText(this, "حالة المزامنة: " + finalStatus, Toast.LENGTH_LONG).show();
+                    showTab(7);
+                });
+            }, "dev-center-sync").start();
+        });
+        remoteCard.addView(space(dp(6)));
+        remoteCard.addView(syncNow);
+        box.addView(remoteCard);
+        box.addView(space(dp(12)));
+
         String[][] cards = {
                 {"premium", "Premium", "Entitlement · Test · Visibility"},
                 {"flags", "Feature Flags", "حالة كل ميزة"},
