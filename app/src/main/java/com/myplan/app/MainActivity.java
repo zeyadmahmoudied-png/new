@@ -6322,6 +6322,28 @@ public class MainActivity extends Activity {
         return t;
     }
 
+    private TextView dialogChoice(String text, boolean on) {
+        TextView t = dialogChoice(text);
+        styleDialogChoice(t, on);
+        return t;
+    }
+
+    private void styleDialogChoice(TextView t, boolean on) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(RADIUS_SM));
+        if (on) {
+            bg.setColor(ACCENT);
+            t.setTextColor(ACCENT_DARK);
+            t.setTypeface(Typeface.DEFAULT_BOLD);
+        } else {
+            bg.setColor(0xFF193A86);
+            t.setTextColor(TEXT);
+            t.setTypeface(Typeface.DEFAULT);
+        }
+        bg.setStroke(dp(1), 0x664B6DFF);
+        t.setBackground(bg);
+    }
+
     private void styleDialogChoice(TextView t) {
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(0xFF193A86);
