@@ -951,13 +951,13 @@ public class MainActivity extends Activity {
             box.addView(space(dp(6)));
         }
 
+        List<Planner.Session> ordered=new ArrayList<>(list);
+        Collections.sort(ordered,(a,b)->Integer.compare(a.startMin,b.startMin));
         LinearLayout dayZone=new LinearLayout(this);
         dayZone.setOrientation(LinearLayout.VERTICAL);
         dayZone.setTag(day);
         if(list.isEmpty()) dayZone.addView(emptyState("مفيش جلسات في اليوم ده"));
         else {
-            List<Planner.Session> ordered=new ArrayList<>(list);
-            Collections.sort(ordered,(a,b)->Integer.compare(a.startMin,b.startMin));
             for(Planner.Session s:ordered){
                 if(s==null || s.done) continue;
                 if(showMainCard){
