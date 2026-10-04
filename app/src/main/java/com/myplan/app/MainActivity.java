@@ -550,6 +550,8 @@ public class MainActivity extends Activity {
 
     // ═══════════════ جدولي ═══════════════
     private boolean missedOfferShown = false;
+    private int developerTapCount = 0;
+    private long developerLastTapAt = 0L;
     /** وضع تعديل جدول اليوم (قلم) — تأجيل بالدقائق بدون Drag */
     private boolean dayEditMode = false;
     /** شاشة تواصل معنا داخل المزيد */
@@ -6313,7 +6315,7 @@ public class MainActivity extends Activity {
         bg.setCornerRadius(dp(RADIUS_SM));
         bg.setStroke(dp(1), 0x664B6DFF);
         t.setTextColor(Color.WHITE);
-        t.setTypeface(on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setBackground(bg);
     }
 
