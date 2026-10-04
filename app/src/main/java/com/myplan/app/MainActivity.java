@@ -4633,34 +4633,67 @@ public class MainActivity extends Activity {
     private View moreAlarmsBody() {
         LinearLayout alCard = new LinearLayout(this);
         alCard.setOrientation(LinearLayout.VERTICAL);
-        TextView onOff = chip(planner.settings.alarmEnabled ? "التنبيهات: تشغيل" : "التنبيهات: إيقاف", true);
-        onOff.setOnClickListener(v -> {
+        alCard.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        // كل إعداد في سطر مستقل: الاسم عادي على اليمين، وزر صغير للتشغيل/الإيقاف على اليسار.
+        LinearLayout alarmRow1 = alarmSettingRow("التنبيهات", planner.settings.alarmEnabled, () -> {
             planner.settings.alarmEnabled = !planner.settings.alarmEnabled;
             planner.save();
             showTab(4);
         });
-        alCard.addView(onOff);
-        alCard.addView(space(dp(6)));
-        TextView vib = chip(planner.settings.alarmVibrate ? "اهتزاز: تشغيل" : "اهتزاز: إيقاف", true);
-        vib.setOnClickListener(v -> {
+        alCard.addView(alarmRow1);
+
+        alCard.addView(space(dp(8)));
+
+        LinearLayout alarmRow2 = alarmSettingRow("اهتزاز", planner.settings.alarmVibrate, () -> {
             planner.settings.alarmVibrate = !planner.settings.alarmVibrate;
             planner.save();
             showTab(4);
         });
-        alCard.addView(vib);
-        alCard.addView(space(dp(6)));
-        TextView sn = chip(planner.settings.alarmSnooze ? ("غفوة: " + planner.settings.snoozeMin + " د") : "غفوة: إيقاف", true);
-        sn.setOnClickListener(v -> {
+        alCard.addView(alarmRow2);
+
+        alCard.addView(space(dp(8)));
+
+        LinearLayout alarmRow3 = alarmSettingRow("غفوة", planner.settings.alarmSnooze, () -> {
             planner.settings.alarmSnooze = !planner.settings.alarmSnooze;
             planner.save();
             showTab(4);
         });
-        alCard.addView(sn);
+        alCard.addView(alarmRow3);
+
         if (!planner.settings.alarmEnabled) {
             alCard.addView(space(dp(6)));
             alCard.addView(muted("التنبيهات متوقفة. الجدول نفسه لا يتأثر."));
         }
         return alCard;
+    }
+
+    private LinearLayout alarmSettingRow(String labelText, boolean enabled, final Runnable action) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        row.setPadding(0, dp(2), 0, dp(2));
+
+        TextView label = new TextView(this);
+        label.setText(labelText);
+        label.setTextColor(TEXT);
+        label.setTextSize(15);
+        label.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        label.setSingleLine(true);
+        row.addView(label, new LinearLayout.LayoutParams(0, dp(44), 1f));
+
+        TextView toggle = chip(enabled ? "تشغيل" : "إيقاف", enabled);
+        toggle.setTextSize(12);
+        toggle.setPadding(dp(12), dp(7), dp(12), dp(7));
+        LinearLayout.LayoutParams toggleLp = new LinearLayout.LayoutParams(
+                dp(78), dp(38));
+        toggleLp.gravity = Gravity.CENTER_VERTICAL;
+        toggleLp.leftMargin = dp(4);
+        row.addView(toggle, toggleLp);
+
+        toggle.setOnClickListener(v -> action.run());
+        return row;
     }
 
     private View moreAccountBody() {
