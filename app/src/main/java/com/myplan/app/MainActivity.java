@@ -852,12 +852,31 @@ public class MainActivity extends Activity {
             // كارت الجلسة الحالية لليوم فقط — الدائرة أعلاه هي دائرة الفترة كلها.
             Planner.Session current=null,next=null;
             int nowM=Planner.nowMinOfDay();
+            // الكارت الكبير دائمًا لأول جلسة غير مكتملة:
+            // لو فيه جلسة شغالة الآن فهي الحالية، وإلا نأخذ أقرب جلسة غير مكتملة زمنيًا.
+            // بهذا، بمجرد إكمال الجلسة الحالية تنتقل التالية تلقائيًا للكارت الكبير،
+            // بينما الجلسات المكتملة تظل في قائمة المكتملات أسفل اليوم.
             for(Planner.Session s:list) if(s!=null&&!s.done){
                 int end=s.endMin<=s.startMin?s.endMin+24*60:s.endMin;
-                if(s.startMin<=nowM&&nowM<end) current=s;
-                else if(s.startMin>nowM&&next==null) next=s;
+                if(s.startMin<=nowM&&nowM<end){
+                    current=s;
+                    break;
+                }
             }
-            if(current==null) for(Planner.Session s:list) if(s!=null&&!s.done){next=s;break;}
+            if(current==null){
+                for(Planner.Session s:list) if(s!=null&&!s.done){
+                    if(current==null || s.startMin < current.startMin) current=s;
+                }
+            }
+            // «التالي» هو أول جلسة غير مكتملة بعد الحالية.
+            if(current!=null){
+                boolean afterCurrent=false;
+                for(Planner.Session s:list) if(s!=null&&!s.done && !s.id.equals(current.id)){
+                    if(s.startMin>current.startMin && (next==null || s.startMin<next.startMin)){
+                        next=s;
+                    }
+                }
+            }
             final Planner.Session currentS=current, nextS=next;
             if(list.isEmpty()) return;
             if(currentS!=null){
