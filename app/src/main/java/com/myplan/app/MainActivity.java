@@ -699,7 +699,7 @@ public class MainActivity extends Activity {
             List<Planner.Session> today=planner.sessionsForDay(Planner.todayStr());
             addSchedulePeriodHeader(box,"",Planner.todayStr(),today);
             addScheduleDayBlock(box,Planner.todayStr(),true);
-        } else {
+        } else if (scheduleViewMode==0 && dayEditMode) {
             // في وضع تعديل "اليوم" نعرض أيام الأسبوع كلها كمساحات إسقاط،
             // حتى يمكن نقل أي جلسة ليوم آخر ووقت آخر، وليس تأجيلها فقط.
             Calendar c=Calendar.getInstance();
@@ -715,8 +715,7 @@ public class MainActivity extends Activity {
                 addScheduleDayBlock(box,day,true);
                 c.add(Calendar.DAY_OF_YEAR,1);
             }
-            if(scheduleViewMode==0) return sc;
-
+        } else {
             Calendar c=Calendar.getInstance(); c.set(Calendar.HOUR_OF_DAY,0);c.set(Calendar.MINUTE,0);c.set(Calendar.SECOND,0);c.set(Calendar.MILLISECOND,0);
             if(scheduleViewMode==1){int diff=c.get(Calendar.DAY_OF_WEEK)-Calendar.SATURDAY;if(diff<0)diff+=7;c.add(Calendar.DAY_OF_YEAR,-diff);}
             int days=scheduleViewMode==1?7:Math.max(1,planner.settings.planDays);
