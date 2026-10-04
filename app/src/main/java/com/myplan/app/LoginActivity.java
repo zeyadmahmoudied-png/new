@@ -249,7 +249,7 @@ public class LoginActivity extends Activity {
         Uri uri = data.getData();
         new AlertDialog.Builder(this)
                 .setTitle("استعادة النسخة؟")
-                .setMessage("سيتم استعادة بيانات My Plan من الملف المختار. بعد الاستعادة يمكنك تسجيل الدخول أو إنشاء حساب جديد على هذا الجهاز.")
+                .setMessage("سيتم استعادة بيانات My Plan من الملف المختار. بعد نجاح الاستعادة سيدخل التطبيق مباشرة بدون الحاجة لتسجيل الدخول.")
                 .setPositiveButton("استعادة", (d, w) -> restoreFromUri(uri))
                 .setNegativeButton("إلغاء", null)
                 .show();
@@ -268,8 +268,9 @@ public class LoginActivity extends Activity {
             Planner restored = new Planner(this);
             restored.importJson(sb.toString());
             Toast.makeText(this,
-                    "تمت استعادة النسخة ✓ يمكنك الآن تسجيل الدخول أو إنشاء حساب جديد.",
+                    "تمت استعادة النسخة ✓ جاري فتح My Plan مباشرة.",
                     Toast.LENGTH_LONG).show();
+            goMain();
         } catch (Exception e) {
             String msg = e.getMessage() == null ? "ملف غير صالح" : e.getMessage();
             Toast.makeText(this, "فشلت الاستعادة — البيانات الحالية لم تتغير. " + msg, Toast.LENGTH_LONG).show();
