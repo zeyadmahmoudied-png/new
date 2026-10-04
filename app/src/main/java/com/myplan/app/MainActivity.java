@@ -684,9 +684,9 @@ public class MainActivity extends Activity {
         TextView d=scheduleModeTab("اليوم",scheduleViewMode==0);
         TextView w=scheduleModeTab("الأسبوع",scheduleViewMode==1);
         TextView cu=scheduleModeTab("مخصص",scheduleViewMode==2);
-        d.setOnClickListener(v->{scheduleViewMode=0;weekView=false;refreshScheduleModeView();});
-        w.setOnClickListener(v->{scheduleViewMode=1;weekView=true;refreshScheduleModeView();});
-        cu.setOnClickListener(v->{scheduleViewMode=2;weekView=true;refreshScheduleModeView();});
+        d.setOnClickListener(v->{scheduleViewMode=0;weekView=false;dayEditMode=false;refreshScheduleModeView();});
+        w.setOnClickListener(v->{scheduleViewMode=1;weekView=true;dayEditMode=false;refreshScheduleModeView();});
+        cu.setOnClickListener(v->{scheduleViewMode=2;weekView=true;dayEditMode=false;refreshScheduleModeView();});
         tabs.addView(d,scheduleModeTabLp());
         tabs.addView(w,scheduleModeTabLp());
         tabs.addView(cu,scheduleModeTabLp());
@@ -3178,13 +3178,14 @@ public class MainActivity extends Activity {
 
     private void showTaskViewChoices(View anchor) {
         String[] labs = {
-                "حسب النوع",
                 "حسب المادة",
                 "حسب المدة",
                 "حسب الأولوية"
         };
-        showFloatingChoices(anchor, labs, Math.max(0, Math.min(3, taskSortKey)), idx -> {
-            taskSortKey = idx;
+        int selected = taskSortKey == 2 ? 1 : (taskSortKey == 3 ? 2 : 0);
+        showFloatingChoices(anchor, labs, selected, idx -> {
+            taskSortKey = idx + 1; // 1=مادة، 2=مدة، 3=أولوية
+            taskSortAsc = false;   // العرض الجديد يبدأ من الكبير للصغير
             saveTaskSortPrefs();
             showTab(1);
         });
@@ -4100,17 +4101,11 @@ public class MainActivity extends Activity {
         LinearLayout metrics=new LinearLayout(this);metrics.setGravity(Gravity.CENTER);
         int hours=Math.max(0,planner.doneMinutes())/60;
         int finishedLectures=0, remainingLectures=0;
-        // احسب المحاضرات من Sessions الفعلية؛ المهمة الواحدة قد تحتوي أكثر من جلسة.
-        if (planner.sessions != null) {
-            for (Planner.Session ss : planner.sessions) {
-                if (ss == null || ss.taskId == null) continue;
-                Planner.Task tt = null;
-                for (Planner.Task candidate : planner.tasks) {
-                    if (candidate != null && ss.taskId.equals(candidate.id)) { tt = candidate; break; }
-                }
-                if (tt == null || !tt.isLecture()) continue;
-                if (ss.done) finishedLectures++; else remainingLectures++;
-            }
+        // هنا المقصود عدد المهام/المحاضرات التي أنشأها المستخدم نفسه:
+        // المكتملة تذهب للمكتملة، وكل ما لم يكتمل يذهب للمتبقية.
+        for (Planner.Task tt : planner.tasks) {
+            if (tt == null) continue;
+            if (tt.done) finishedLectures++; else remainingLectures++;
         }
         metrics.addView(statMetricCard("ساعات المذاكرة",String.valueOf(hours)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المحاضرات المكتملة",String.valueOf(finishedLectures)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المحاضرات المتبقية",String.valueOf(remainingLectures)));box.addView(metrics);
         box.addView(space(dp(14)));LinearLayout chart=card();TextView ct=muted("آخر 7 أيام");ct.setTextColor(TEXT);ct.setTextSize(16);ct.setTypeface(Typeface.DEFAULT_BOLD);ct.setGravity(Gravity.RIGHT);chart.addView(ct);chart.addView(space(dp(8)));
@@ -5263,10 +5258,19 @@ public class MainActivity extends Activity {
                 info.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
                 String subjectText=e.subject==null?"":e.subject.trim();
                 String examName=e.title==null||e.title.trim().isEmpty()?"امتحان":e.title.trim();
+
+                TextView subjectTv=new TextView(this);
+                subjectTv.setText(subjectText.isEmpty() ? "المادة" : subjectText);
+                subjectTv.setTextColor(ACCENT);
+                subjectTv.setTextSize(13);
+                subjectTv.setTypeface(Typeface.DEFAULT_BOLD);
+                subjectTv.setGravity(Gravity.RIGHT);
+                info.addView(subjectTv);
+
                 TextView titleLine=new TextView(this);
-                titleLine.setText(subjectText.isEmpty()?examName:subjectText+" — "+examName);
+                titleLine.setText(examName);
                 titleLine.setTextColor(TEXT);
-                titleLine.setTextSize(17);
+                titleLine.setTextSize(20);
                 titleLine.setTypeface(Typeface.DEFAULT_BOLD);
                 titleLine.setGravity(Gravity.RIGHT);
                 titleLine.setSingleLine(true);
@@ -5276,7 +5280,7 @@ public class MainActivity extends Activity {
                 TextView prepLabel=new TextView(this);
                 prepLabel.setText("مستوى التجهيز: "+Math.max(0,Math.min(100,e.prepLevel))+"%");
                 prepLabel.setTextColor(ACCENT);
-                prepLabel.setTextSize(12);
+                prepLabel.setTextSize(13);
                 prepLabel.setTypeface(Typeface.DEFAULT_BOLD);
                 prepLabel.setGravity(Gravity.RIGHT);
                 info.addView(prepLabel);
