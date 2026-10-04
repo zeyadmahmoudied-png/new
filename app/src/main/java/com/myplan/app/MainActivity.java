@@ -92,6 +92,8 @@ public class MainActivity extends Activity {
     private int scheduleViewMode = 0; // 0 اليوم 1 أسبوع 2 مخصص
     private View floatingOverlay;
     private int weekSelectedDow = -1; // -1 = show all week, else Calendar.DAY_OF_WEEK
+    private int developerTapCount = 0;
+    private long developerLastTapMs = 0L;
 
     // Timer state survives tab switches
     private CountDownTimer timer;
@@ -6310,7 +6312,7 @@ public class MainActivity extends Activity {
         bg.setColor(0xFF193A86);
         bg.setCornerRadius(dp(RADIUS_SM));
         bg.setStroke(dp(1), 0x664B6DFF);
-        t.setTextColor(TEXT);
+        t.setTextColor(Color.WHITE);
         t.setTypeface(on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
         t.setBackground(bg);
     }
@@ -6320,7 +6322,7 @@ public class MainActivity extends Activity {
         bg.setColor(0xFF193A86);
         bg.setCornerRadius(dp(RADIUS_SM));
         bg.setStroke(dp(1), 0x664B6DFF);
-        t.setTextColor(TEXT);
+        t.setTextColor(Color.WHITE);
         t.setTypeface(Typeface.DEFAULT);
         t.setBackground(bg);
     }
