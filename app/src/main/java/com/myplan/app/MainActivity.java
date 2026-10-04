@@ -734,7 +734,7 @@ public class MainActivity extends Activity {
 
         DayGaugeView gauge=new DayGaugeView(this);
         gauge.setProgress(pct);
-        head.addView(gauge,new LinearLayout.LayoutParams(dp(80),dp(80)));
+        head.addView(gauge,new LinearLayout.LayoutParams(dp(88),dp(88)));
 
         LinearLayout info=new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
@@ -1877,7 +1877,7 @@ public class MainActivity extends Activity {
             // النسبة في منتصف العداد
             int pct = Math.round(Math.max(0f, Math.min(1f, progress)) * 100f);
             String label = pct + "%";
-            textPaint.setTextSize(dp(18));
+            textPaint.setTextSize(dp(20));
             textPaint.setColor(TEXT);
             Paint.FontMetrics fm = textPaint.getFontMetrics();
             float cx = getWidth() / 2f;
@@ -4032,9 +4032,13 @@ public class MainActivity extends Activity {
         TextView msg=new TextView(this);msg.setText(progressMessage(pct));msg.setTextColor(Color.WHITE);msg.setTextSize(22);msg.setTypeface(Typeface.DEFAULT_BOLD);msg.setGravity(Gravity.RIGHT);ht.addView(msg);
         hero.addView(ht,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));box.addView(hero);box.addView(space(dp(12)));
         LinearLayout metrics=new LinearLayout(this);metrics.setGravity(Gravity.CENTER);
-        int hours=Math.max(0,planner.doneMinutes())/60,finished=0;for(Planner.Session ss:planner.sessions)if(ss!=null&&ss.done)finished++;
-        int remainingTasks=0; for(Planner.Task tt:planner.tasks) if(tt!=null&&!tt.done) remainingTasks++;
-        metrics.addView(statMetricCard("ساعات المذاكرة",String.valueOf(hours)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المهام المكتملة",String.valueOf(finished)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المهام المتبقية",String.valueOf(remainingTasks)));box.addView(metrics);
+        int hours=Math.max(0,planner.doneMinutes())/60;
+        int finishedLectures=0, remainingLectures=0;
+        for(Planner.Task tt:planner.tasks){
+            if(tt==null || !tt.isLecture()) continue;
+            if(tt.done) finishedLectures++; else remainingLectures++;
+        }
+        metrics.addView(statMetricCard("ساعات المذاكرة",String.valueOf(hours)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المحاضرات المكتملة",String.valueOf(finishedLectures)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المحاضرات المتبقية",String.valueOf(remainingLectures)));box.addView(metrics);
         box.addView(space(dp(14)));LinearLayout chart=card();TextView ct=muted("آخر 7 أيام");ct.setTextColor(TEXT);ct.setTextSize(16);ct.setTypeface(Typeface.DEFAULT_BOLD);ct.setGravity(Gravity.RIGHT);chart.addView(ct);chart.addView(space(dp(8)));
         SevenDayProgressChart ch=new SevenDayProgressChart(this);ch.setDays(lastSevenDayProgress(),lastSevenDayLabels());chart.addView(ch,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(180)));box.addView(chart);
         return sc;
@@ -4569,7 +4573,7 @@ public class MainActivity extends Activity {
         b.setOrientation(LinearLayout.VERTICAL);
 
         b.addView(muted("أيام الراحة"));
-        TextView restBtn = chip("تحديد أيام الراحة", false);
+        TextView restBtn = chip("تحديد أيام الراحة", true);
         restBtn.setOnClickListener(v -> pickRestDays());
         b.addView(restBtn);
         if (!planner.settings.restDays.isEmpty()) {
