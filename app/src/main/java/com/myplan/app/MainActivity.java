@@ -590,7 +590,7 @@ public class MainActivity extends Activity {
 
     private void setScheduleModeTabStyle(TextView tv, boolean selected) {
         tv.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-        tv.setTextColor(selected ? Color.WHITE : MUTED);
+        tv.setTextColor(selected ? ACCENT : MUTED);
         tv.setGravity(Gravity.CENTER);
         tv.setPadding(0,dp(8),0,dp(7));
         android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();
@@ -809,15 +809,15 @@ public class MainActivity extends Activity {
             }
             if(current==null) for(Planner.Session s:list) if(s!=null&&!s.done){next=s;break;}
             final Planner.Session currentS=current, nextS=next;
-            LinearLayout nowCard=card();
-            nowCard.setOrientation(LinearLayout.VERTICAL);
-            nowCard.setPadding(dp(18),dp(18),dp(18),dp(18));
-            nowCard.setMinimumHeight(dp(220));
-            GradientDrawable nowBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    new int[]{0xFF243D78,0xFF5B43C9});
-            nowBg.setCornerRadius(dp(20));
-            nowCard.setBackground(nowBg);
             if(currentS!=null){
+                LinearLayout nowCard=card();
+                nowCard.setOrientation(LinearLayout.VERTICAL);
+                nowCard.setPadding(dp(18),dp(18),dp(18),dp(18));
+                nowCard.setMinimumHeight(dp(220));
+                GradientDrawable nowBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                        new int[]{0xFF243D78,0xFF5B43C9});
+                nowBg.setCornerRadius(dp(20));
+                nowCard.setBackground(nowBg);
                 TextView tag=muted("الآن");
                 tag.setTextColor(0xFFE4EAFF);
                 tag.setTextSize(13);
@@ -838,18 +838,6 @@ public class MainActivity extends Activity {
                 n.setGravity(Gravity.RIGHT);
                 n.setPadding(0,dp(4),0,0);
                 nowCard.addView(n);
-
-                String lecturerText = currentS.lecturer == null ? "" : currentS.lecturer.trim();
-                if (!lecturerText.isEmpty()) {
-                    TextView lecturer = new TextView(this);
-                    lecturer.setText(lecturerText);
-                    lecturer.setTextColor(Color.WHITE);
-                    lecturer.setTextSize(17);
-                    lecturer.setTypeface(Typeface.DEFAULT_BOLD);
-                    lecturer.setGravity(Gravity.RIGHT);
-                    lecturer.setPadding(0, dp(4), 0, 0);
-                    nowCard.addView(lecturer);
-                }
 
                 int remaining=Math.max(0,(currentS.endMin<=currentS.startMin?currentS.endMin+24*60:currentS.endMin)-nowM);
                 TextView duration=muted("المدة: "+Math.max(1,currentS.durationMin)+" د · متبقي "+remaining+" د");
@@ -882,25 +870,9 @@ public class MainActivity extends Activity {
                 moreBtn.setOnClickListener(v->showSessionMoreDialog(currentS));
                 actions.addView(moreBtn,new LinearLayout.LayoutParams(0,dp(50),.55f));
                 nowCard.addView(actions);
-            } else if(nextS!=null){
-                nowCard.addView(muted("القادمة"));
-                TextView n=new TextView(this);
-                String subj=nextS.subject==null?"":nextS.subject.trim();
-                String lecture=nextS.taskName==null?"":nextS.taskName.trim();
-                n.setText((!subj.isEmpty()&&!lecture.isEmpty()?subj+" — "+lecture:(!subj.isEmpty()?subj:lecture)));
-                n.setTextColor(TEXT);
-                n.setTextSize(20);
-                n.setTypeface(Typeface.DEFAULT_BOLD);
-                nowCard.addView(n);
-                nowCard.addView(muted(nextS.timeLabel()));
-                Button startBtn=primaryBtn("ابدأ");
-                startBtn.setOnClickListener(v->openTimer(nextS));
-                nowCard.addView(startBtn,fullBtnLp());
-            } else {
-                nowCard.addView(muted(list.isEmpty()?"مفيش جلسات لليوم":"خلصت جلسات اليوم ✓"));
+                box.addView(nowCard);
+                box.addView(space(dp(10)));
             }
-            box.addView(nowCard);
-            box.addView(space(dp(10)));
             LinearLayout laterHead = new LinearLayout(this);
             laterHead.setGravity(Gravity.CENTER_VERTICAL);
             TextView laterTitle = sectionHeader("لاحقًا");
@@ -2960,11 +2932,11 @@ public class MainActivity extends Activity {
     private View buildTasksScreen() {
         FrameLayout root=new FrameLayout(this);
         ScrollView sc=new ScrollView(this); sc.setFillViewport(true);
-        sc.setPadding(0,0,0,dp(92));
+        sc.setPadding(0,0,0,dp(72));
         LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(18),dp(18),dp(18),dp(28)); box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL); sc.addView(box);
         LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView h=title("المهام");h.setTextSize(32);head.addView(h,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+        TextView h=title("المهام");h.setTextSize(32);h.setTypeface(Typeface.DEFAULT_BOLD);h.setGravity(Gravity.RIGHT);head.addView(h,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
         TextView filter=chip("العرض ▾",false);filter.setOnClickListener(v->showTaskViewChoices(v));head.addView(filter);box.addView(head);box.addView(space(dp(10)));
         LinearLayout tabs=new LinearLayout(this);tabs.setGravity(Gravity.CENTER_VERTICAL);
         TextView all=chip("الكل",taskKindFilter==-1),lec=chip("محاضرات",taskKindFilter==Planner.Task.KIND_LECTURE),study=chip("مذاكرة",taskKindFilter==Planner.Task.KIND_STUDY);
@@ -2982,7 +2954,7 @@ public class MainActivity extends Activity {
         LinearLayout bar=new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER);
-        bar.setPadding(dp(12),dp(8),dp(12),dp(8));
+        bar.setPadding(dp(12),dp(6),dp(12),dp(6));
         bar.setBackgroundColor(BG);
 
         TextView btn=primaryBtn("+ "+labelText);
@@ -2992,7 +2964,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,dp(48)));
 
         FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,dp(64));
+                ViewGroup.LayoutParams.MATCH_PARENT,dp(60));
         lp.gravity=Gravity.BOTTOM;
         lp.leftMargin=0;
         lp.rightMargin=0;
@@ -3607,11 +3579,6 @@ public class MainActivity extends Activity {
         }));
         form.addView(subject);
 
-        form.addView(label("اسم المحاضر (اختياري)"));
-        EditText lecturerEt = dialogField();
-        lecturerEt.setHint("اسم المحاضر");
-        form.addView(lecturerEt);
-
         form.addView(label("مدة المهمة كاملة (دقيقة)"));
         EditText durationEt = dialogField();
         durationEt.setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -3798,7 +3765,6 @@ public class MainActivity extends Activity {
         if (existing != null) {
             name.setText(existing.name);
             subject.setText(existing.subject);
-            lecturerEt.setText(existing.lecturer == null ? "" : existing.lecturer);
             durationEt.setText(String.valueOf(existing.durationMin));
             if (existing.deadline != null && !existing.deadline.isEmpty()) {
                 deadline[0] = existing.deadline;
@@ -3839,7 +3805,6 @@ public class MainActivity extends Activity {
                 int prevDuration = isNew ? 0 : existing.durationMin;
                 t.name = n;
                 t.subject = sub;
-                t.lecturer = lecturerEt.getText() == null ? "" : lecturerEt.getText().toString().trim();
                 t.durationMin = total;
                 t.applySessionCount(scount);
                 if (isNew) t.remainingMin = t.durationMin;
@@ -4471,7 +4436,7 @@ public class MainActivity extends Activity {
         ver.setTextColor(MUTED);
         ver.setPadding(0,dp(8),0,dp(8));
         ver.setSingleLine(false);
-        ver.setOnLongClickListener(v->{promptDeveloperPassword();return true;});
+        ver.setOnClickListener(v -> promptDeveloperPassword());
         box.addView(ver);
 
         return sc;
@@ -5114,7 +5079,7 @@ public class MainActivity extends Activity {
         FrameLayout root=new FrameLayout(this);
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setPadding(0,0,0,dp(92));
         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(18),dp(18),dp(28));box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);sc.addView(box);
-        TextView h=title("الامتحانات");h.setTextSize(32);box.addView(h);box.addView(space(dp(14)));
+        TextView h=title("الامتحانات");h.setTextSize(32);h.setTypeface(Typeface.DEFAULT_BOLD);h.setGravity(Gravity.RIGHT);box.addView(h);box.addView(space(dp(14)));
         if(planner.exams.isEmpty())box.addView(emptyState("لا توجد امتحانات مضافة."));
         else{
             Calendar td=Calendar.getInstance();td.set(Calendar.HOUR_OF_DAY,0);td.set(Calendar.MINUTE,0);td.set(Calendar.SECOND,0);td.set(Calendar.MILLISECOND,0);
