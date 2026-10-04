@@ -959,14 +959,31 @@ public class MainActivity extends Activity {
             List<Planner.Session> ordered=new ArrayList<>(list);
             Collections.sort(ordered,(a,b)->Integer.compare(a.startMin,b.startMin));
             for(Planner.Session s:ordered){
-                if(showMainCard && s!=null){
-                    // الجلسة الحالية تُعرض مرة واحدة في الكارت الكبير؛ الباقي يظل قابلًا للفتح.
+                if(s==null || s.done) continue;
+                if(showMainCard){
+                    // الجلسة الحالية تُعرض مرة واحدة في الكارت الكبير؛ الباقي يظهر تحت «لاحقًا».
                     int nowM=Planner.nowMinOfDay();
                     boolean current=!s.done&&isToday&&s.startMin<=nowM&&nowM<(s.endMin<=s.startMin?s.endMin+24*60:s.endMin);
                     if(current) continue;
                 }
                 dayZone.addView(sessionCard(s));
             }
+        }
+        if(showMainCard){
+            TextView completedHead = sectionHeader("المكتملة");
+            box.addView(completedHead);
+            box.addView(space(dp(6)));
+            LinearLayout completedZone=new LinearLayout(this);
+            completedZone.setOrientation(LinearLayout.VERTICAL);
+            boolean hasCompleted=false;
+            for(Planner.Session s:ordered){
+                if(s!=null && s.done){
+                    hasCompleted=true;
+                    completedZone.addView(sessionCard(s));
+                }
+            }
+            if(!hasCompleted) completedZone.addView(muted("لا توجد محاضرات مكتملة"));
+            box.addView(completedZone);
         }
         box.addView(dayZone);
         dayDropZones.put(day,dayZone);
@@ -5278,7 +5295,7 @@ public class MainActivity extends Activity {
         viewLabel.setTypeface(Typeface.DEFAULT_BOLD);
         viewRow.addView(viewLabel);
         viewRow.addView(space(dp(8)));
-        TextView viewBtn = ghostBtn(examSortMode == 0 ? "الأقرب" : "التجهيز");
+        TextView viewBtn = ghostBtn("العرض");
         viewBtn.setTextSize(14);
         viewBtn.setTextColor(ACCENT);
         viewBtn.setOnClickListener(v -> showExamViewChoices(viewBtn));
@@ -5379,13 +5396,13 @@ public class MainActivity extends Activity {
                 prepLabel.setGravity(Gravity.RIGHT);
                 ex.addView(prepLabel);
 
-                SeekBar prepBar = new SeekBar(this);
+                ProgressBar prepBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
                 prepBar.setMax(100);
                 prepBar.setProgress(prep);
                 prepBar.setPadding(0, dp(2), 0, 0);
                 if (Build.VERSION.SDK_INT >= 21) {
                     prepBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));
-                    prepBar.setThumbTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+                    // مؤشر ثابت للعرض فقط؛ التعديل يتم من شاشة إضافة/تعديل الامتحان.
                 }
                 ex.addView(prepBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
@@ -5416,7 +5433,7 @@ public class MainActivity extends Activity {
         int selected = examSortMode;
         showFloatingChoices(anchor, choices, selected, idx -> {
             examSortMode = idx;
-            showTab(2);
+            showTab(3);
         });
     }
 
