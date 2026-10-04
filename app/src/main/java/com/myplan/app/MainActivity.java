@@ -92,9 +92,6 @@ public class MainActivity extends Activity {
     private int scheduleViewMode = 0; // 0 اليوم 1 أسبوع 2 مخصص
     private View floatingOverlay;
     private int weekSelectedDow = -1; // -1 = show all week, else Calendar.DAY_OF_WEEK
-    private int developerTapCount = 0;
-    private long developerLastTapMs = 0L;
-
     // Timer state survives tab switches
     private CountDownTimer timer;
     private String timerSessionId;
@@ -594,7 +591,7 @@ public class MainActivity extends Activity {
 
     private void setScheduleModeTabStyle(TextView tv, boolean selected) {
         tv.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-        tv.setTextColor(selected ? 0xFF2457D6 : 0xFFB9C4D8);
+        tv.setTextColor(selected ? 0xFF4B6DFF : 0xFFB9C4D8);
         tv.setGravity(Gravity.CENTER);
         tv.setPadding(dp(8),dp(8),dp(8),dp(7));
         android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();
@@ -4433,7 +4430,7 @@ public class MainActivity extends Activity {
         box.addView(account);
         box.addView(space(dp(14)));
 
-        // الإصدار ظاهر دائمًا في أسفل الصفحة؛ الضغط المطوّل فقط يفتح مركز المطور.
+        // الإصدار ظاهر دائمًا في أسفل الصفحة؛ خمس ضغطات متتالية تفتح مركز المطور.
         TextView ver=muted("My Plan · الإصدار "+getAppVersionName());
         ver.setGravity(Gravity.CENTER);
         ver.setTextSize(12);
