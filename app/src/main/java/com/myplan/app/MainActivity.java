@@ -2514,7 +2514,7 @@ public class MainActivity extends Activity {
         box.addView(title("رسائل من المطور"));
         box.addView(space(dp(12)));
 
-        TextView refresh = chip("تحديث", false);
+        TextView refresh = chip("تحديث", true);
         refresh.setOnClickListener(v -> {
             Toast.makeText(this, "جاري التحديث…", Toast.LENGTH_SHORT).show();
             syncInboxAsync(true);
@@ -4558,7 +4558,7 @@ public class MainActivity extends Activity {
         b.addView(prepTv);
         b.addView(space(dp(12)));
         b.addView(muted("استثناءات النوم"));
-        TextView exBtn = chip("إدارة استثناءات النوم", false);
+        TextView exBtn = chip("إدارة استثناءات النوم", true);
         exBtn.setOnClickListener(v -> pickExceptionDays());
         b.addView(exBtn);
         if (!planner.settings.sleepExceptions.isEmpty()) {
@@ -4624,7 +4624,7 @@ public class MainActivity extends Activity {
         sessBtn.setOnClickListener(v -> showDefaultSessionDurationDialog());
         b.addView(sessBtn);
         b.addView(space(dp(6)));
-        TextView brBtn = chip("تعديل مدة الراحة", false);
+        TextView brBtn = chip("تعديل مدة الراحة", true);
         brBtn.setOnClickListener(v -> showDefaultBreakDurationDialog());
         b.addView(brBtn);
         return b;
@@ -4633,7 +4633,7 @@ public class MainActivity extends Activity {
     private View moreAlarmsBody() {
         LinearLayout alCard = new LinearLayout(this);
         alCard.setOrientation(LinearLayout.VERTICAL);
-        TextView onOff = chip(planner.settings.alarmEnabled ? "التنبيهات: تشغيل" : "التنبيهات: إيقاف", planner.settings.alarmEnabled);
+        TextView onOff = chip(planner.settings.alarmEnabled ? "التنبيهات: تشغيل" : "التنبيهات: إيقاف", true);
         onOff.setOnClickListener(v -> {
             planner.settings.alarmEnabled = !planner.settings.alarmEnabled;
             planner.save();
@@ -4641,7 +4641,7 @@ public class MainActivity extends Activity {
         });
         alCard.addView(onOff);
         alCard.addView(space(dp(6)));
-        TextView vib = chip(planner.settings.alarmVibrate ? "اهتزاز: تشغيل" : "اهتزاز: إيقاف", planner.settings.alarmVibrate);
+        TextView vib = chip(planner.settings.alarmVibrate ? "اهتزاز: تشغيل" : "اهتزاز: إيقاف", true);
         vib.setOnClickListener(v -> {
             planner.settings.alarmVibrate = !planner.settings.alarmVibrate;
             planner.save();
@@ -4649,7 +4649,7 @@ public class MainActivity extends Activity {
         });
         alCard.addView(vib);
         alCard.addView(space(dp(6)));
-        TextView sn = chip(planner.settings.alarmSnooze ? ("غفوة: " + planner.settings.snoozeMin + " د") : "غفوة: إيقاف", planner.settings.alarmSnooze);
+        TextView sn = chip(planner.settings.alarmSnooze ? ("غفوة: " + planner.settings.snoozeMin + " د") : "غفوة: إيقاف", true);
         sn.setOnClickListener(v -> {
             planner.settings.alarmSnooze = !planner.settings.alarmSnooze;
             planner.save();
@@ -4675,7 +4675,7 @@ public class MainActivity extends Activity {
             accBox.addView(space(dp(6)));
             accBox.addView(muted("بيانات الدراسة تبقى على الجهاز."));
             accBox.addView(space(dp(8)));
-            TextView logoutBtn = chip("تسجيل الخروج", false);
+            TextView logoutBtn = chip("تسجيل الخروج", true);
             logoutBtn.setOnClickListener(v -> showLogoutWithBackupPrompt());
             accBox.addView(logoutBtn);
         } else {
@@ -4685,7 +4685,7 @@ public class MainActivity extends Activity {
             reg.setOnClickListener(v -> showLocalRegisterDialog());
             accBox.addView(reg);
             accBox.addView(space(dp(6)));
-            TextView login = chip("تسجيل الدخول", false);
+            TextView login = chip("تسجيل الدخول", true);
             login.setOnClickListener(v -> showLocalLoginDialog());
             accBox.addView(login);
         }
@@ -4736,7 +4736,7 @@ public class MainActivity extends Activity {
         minH.setText(String.valueOf(Math.max(0, planner.settings.studyMinMin / 60)));
         tgtH.setText(String.valueOf(Math.max(0, planner.settings.studyTargetMin / 60)));
         maxH.setText(String.valueOf(Math.max(0, planner.settings.studyMaxMin / 60)));
-        TextView enChip = chip(en[0] ? "تشغيل" : "إيقاف", en[0]);
+        TextView enChip = chip(en[0] ? "تشغيل" : "إيقاف", true);
         enChip.setOnClickListener(v -> {
             en[0] = !en[0];
             enChip.setText(en[0] ? "تشغيل" : "إيقاف");
@@ -4784,7 +4784,7 @@ public class MainActivity extends Activity {
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(16), dp(8), dp(16), dp(8));
         final boolean[] en = {planner.settings.lectureReleaseEnabled};
-        TextView enChip = chip(en[0] ? "تشغيل" : "إيقاف", en[0]);
+        TextView enChip = chip(en[0] ? "تشغيل" : "إيقاف", true);
         enChip.setOnClickListener(v -> {
             en[0] = !en[0];
             enChip.setText(en[0] ? "تشغيل" : "إيقاف");
@@ -7238,7 +7238,7 @@ public class MainActivity extends Activity {
     }
 
     private void buildDevLogsSection(LinearLayout box) {
-        TextView refresh = chip("تحديث", false);
+        TextView refresh = chip("تحديث", true);
         refresh.setOnClickListener(v -> showTab(7));
         box.addView(refresh);
         box.addView(space(dp(6)));
