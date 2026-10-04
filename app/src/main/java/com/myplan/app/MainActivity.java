@@ -601,11 +601,10 @@ public class MainActivity extends Activity {
         bg.setColor(0x00000000);
         bg.setCornerRadius(dp(8));
         if(selected){
-            bg.setStroke(dp(1),0x00000000);
             android.graphics.drawable.LayerDrawable layer=new android.graphics.drawable.LayerDrawable(
                     new android.graphics.drawable.Drawable[]{bg,
                             new android.graphics.drawable.InsetDrawable(
-                                    new android.graphics.drawable.ColorDrawable(0xFF2457D6),0,dp(39),0,0)});
+                                    new android.graphics.drawable.ColorDrawable(0xFF2457D6),dp(8),dp(39),dp(8),0)});
             tv.setBackground(layer);
         }else{
             tv.setBackground(bg);
@@ -2941,7 +2940,7 @@ public class MainActivity extends Activity {
         LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(18),dp(18),dp(18),dp(28)); box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL); sc.addView(box);
         LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView h=title("المهام");h.setTextSize(32);h.setTypeface(Typeface.DEFAULT_BOLD);h.setGravity(Gravity.RIGHT);head.addView(h,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+        TextView h=title("المهام");h.setTextSize(34);h.setTypeface(Typeface.DEFAULT_BOLD);h.setTypeface(Typeface.DEFAULT_BOLD);h.setGravity(Gravity.RIGHT);head.addView(h,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
         TextView filter=chip("العرض ▾",false);filter.setOnClickListener(v->showTaskViewChoices(v));head.addView(filter);box.addView(head);box.addView(space(dp(10)));
         LinearLayout tabs=new LinearLayout(this);tabs.setGravity(Gravity.CENTER_VERTICAL);
         TextView all=chip("الكل",taskKindFilter==-1),lec=chip("محاضرات",taskKindFilter==Planner.Task.KIND_LECTURE),study=chip("مذاكرة",taskKindFilter==Planner.Task.KIND_STUDY);
@@ -5095,7 +5094,7 @@ public class MainActivity extends Activity {
         FrameLayout root=new FrameLayout(this);
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setPadding(0,0,0,dp(72));
         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(18),dp(18),dp(28));box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);sc.addView(box);
-        TextView h=title("الامتحانات");h.setTextSize(32);h.setTypeface(Typeface.DEFAULT_BOLD);h.setGravity(Gravity.RIGHT);box.addView(h);box.addView(space(dp(14)));
+        TextView h=title("الامتحانات");h.setTextSize(34);h.setTypeface(Typeface.DEFAULT_BOLD);h.setTypeface(Typeface.DEFAULT_BOLD);h.setGravity(Gravity.RIGHT);box.addView(h);box.addView(space(dp(14)));
         if(planner.exams.isEmpty())box.addView(emptyState("لا توجد امتحانات مضافة."));
         else{
             Calendar td=Calendar.getInstance();td.set(Calendar.HOUR_OF_DAY,0);td.set(Calendar.MINUTE,0);td.set(Calendar.SECOND,0);td.set(Calendar.MILLISECOND,0);
