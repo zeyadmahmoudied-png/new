@@ -2932,48 +2932,87 @@ public class MainActivity extends Activity {
 
     // ═══════════════ Tasks ═══════════════
     private View buildTasksScreen() {
-        FrameLayout root=new FrameLayout(this);
-        ScrollView sc=new ScrollView(this); sc.setFillViewport(true);
-        sc.setPadding(0,0,0,dp(72));
-        LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18),dp(18),dp(18),dp(28)); box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL); sc.addView(box);
-        LinearLayout head=new LinearLayout(this);head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView h=title("المهام");h.setTextSize(34);h.setTypeface(Typeface.DEFAULT_BOLD);h.setTypeface(Typeface.DEFAULT_BOLD);h.setGravity(Gravity.RIGHT);head.addView(h,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
-        TextView filter=chip("العرض ▾",false);filter.setOnClickListener(v->showTaskViewChoices(v));head.addView(filter);box.addView(head);box.addView(space(dp(10)));
-        LinearLayout tabs=new LinearLayout(this);tabs.setGravity(Gravity.CENTER_VERTICAL);
-        TextView all=chip("الكل",taskKindFilter==-1),lec=chip("محاضرات",taskKindFilter==Planner.Task.KIND_LECTURE),study=chip("مذاكرة",taskKindFilter==Planner.Task.KIND_STUDY);
-        all.setOnClickListener(v->{taskKindFilter=-1;showTab(1);});lec.setOnClickListener(v->{taskKindFilter=Planner.Task.KIND_LECTURE;showTab(1);});study.setOnClickListener(v->{taskKindFilter=Planner.Task.KIND_STUDY;showTab(1);});
-        tabs.addView(all,chipLp());tabs.addView(space(dp(6)));tabs.addView(lec,chipLp());tabs.addView(space(dp(6)));tabs.addView(study,chipLp());box.addView(tabs);box.addView(space(dp(14)));
-        List<Planner.Task> list=new ArrayList<>(planner.tasks);if(taskKindFilter!=-1){List<Planner.Task>x=new ArrayList<>();for(Planner.Task t:list)if(t.kind==taskKindFilter)x.add(t);list=x;}list.sort(this::compareTasksForDisplay);
-        if(list.isEmpty())box.addView(emptyState("مفيش مهام في القسم ده."));else for(Planner.Task t:list)box.addView(taskCard(t));
-        box.addView(space(dp(78)));
-        root.addView(sc,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-        root.addView(fixedAddBar("إضافة مهمة",()->showAddTaskDialog(null)));
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BG);
+        root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        ScrollView sc = new ScrollView(this);
+        sc.setFillViewport(true);
+        sc.setClipToPadding(false);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(18), dp(18), dp(18));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        sc.addView(box);
+
+        TextView h = title("المهام");
+        h.setTextSize(34);
+        h.setTypeface(Typeface.DEFAULT_BOLD);
+        h.setGravity(Gravity.RIGHT);
+        box.addView(h);
+        box.addView(space(dp(12)));
+
+        LinearLayout tabs = new LinearLayout(this);
+        tabs.setGravity(Gravity.CENTER_VERTICAL);
+        tabs.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        TextView all = chip("الكل", taskKindFilter == -1);
+        TextView lec = chip("محاضرات", taskKindFilter == Planner.Task.KIND_LECTURE);
+        TextView study = chip("مذاكرة", taskKindFilter == Planner.Task.KIND_STUDY);
+        all.setOnClickListener(v -> { taskKindFilter = -1; showTab(1); });
+        lec.setOnClickListener(v -> { taskKindFilter = Planner.Task.KIND_LECTURE; showTab(1); });
+        study.setOnClickListener(v -> { taskKindFilter = Planner.Task.KIND_STUDY; showTab(1); });
+        tabs.addView(all, chipLp());
+        tabs.addView(space(dp(6)));
+        tabs.addView(lec, chipLp());
+        tabs.addView(space(dp(6)));
+        tabs.addView(study, chipLp());
+
+        TextView filter = chip("طريقة العرض ▾", false);
+        filter.setOnClickListener(v -> showTaskViewChoices(v));
+        box.addView(tabs);
+        box.addView(space(dp(10)));
+        box.addView(filter);
+        box.addView(space(dp(14)));
+
+        List<Planner.Task> list = new ArrayList<>(planner.tasks);
+        if (taskKindFilter != -1) {
+            List<Planner.Task> filtered = new ArrayList<>();
+            for (Planner.Task t : list) if (t.kind == taskKindFilter) filtered.add(t);
+            list = filtered;
+        }
+        list.sort(this::compareTasksForDisplay);
+
+        if (list.isEmpty()) {
+            box.addView(emptyState("مفيش مهام مضافة لسه."));
+            box.addView(space(dp(8)));
+            box.addView(muted("اضغط «إضافة مهمة» من أسفل الشاشة لإضافة أول مهمة."));
+        } else {
+            for (Planner.Task t : list) {
+                box.addView(taskCard(t));
+                box.addView(space(dp(8)));
+            }
+        }
+
+        LinearLayout.LayoutParams scrollLp =
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        root.addView(sc, scrollLp);
+
+        TextView addBtn = primaryBtn("+ إضافة مهمة");
+        addBtn.setTextSize(16);
+        addBtn.setOnClickListener(v -> showAddTaskDialog(null));
+
+        LinearLayout addBar = new LinearLayout(this);
+        addBar.setGravity(Gravity.CENTER);
+        addBar.setPadding(dp(12), dp(6), dp(12), dp(6));
+        addBar.setBackgroundColor(BG);
+        addBar.addView(addBtn, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+        root.addView(addBar, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(60)));
+
         return root;
-    }
-
-    private View fixedAddBar(String labelText, final Runnable action) {
-        LinearLayout bar=new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER);
-        bar.setPadding(dp(12),dp(6),dp(12),dp(6));
-        bar.setBackgroundColor(BG);
-
-        TextView btn=primaryBtn("+ "+labelText);
-        btn.setTextSize(16);
-        btn.setOnClickListener(v->action.run());
-        bar.addView(btn,new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,dp(48)));
-
-        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,dp(60));
-        lp.gravity=Gravity.BOTTOM;
-        lp.leftMargin=0;
-        lp.rightMargin=0;
-        lp.bottomMargin=0;
-        // تثبيت شريط الإضافة داخل مساحة المحتوى نفسها، بحيث يكون مباشرة فوق شريط الخمس أزرار.
-        bar.setLayoutParams(lp);
-        return bar;
     }
 
     private void appendTaskGroup(LinearLayout box, String title, List<Planner.Task> list) {
@@ -5123,14 +5162,18 @@ public class MainActivity extends Activity {
     }
 
     private View buildExamsScreen() {
-        FrameLayout root = new FrameLayout(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BG);
+        root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
         ScrollView sc = new ScrollView(this);
         sc.setFillViewport(true);
-        sc.setPadding(0, 0, 0, dp(72));
+        sc.setClipToPadding(false);
 
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18), dp(18), dp(18), dp(28));
+        box.setPadding(dp(18), dp(18), dp(18), dp(18));
         box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         sc.addView(box);
 
@@ -5142,7 +5185,9 @@ public class MainActivity extends Activity {
         box.addView(space(dp(14)));
 
         if (planner.exams.isEmpty()) {
-            box.addView(emptyState("لا توجد امتحانات مضافة."));
+            box.addView(emptyState("مفيش امتحانات مضافة لسه."));
+            box.addView(space(dp(8)));
+            box.addView(muted("اضغط «إضافة امتحان» من أسفل الشاشة لإضافة أول امتحان."));
         } else {
             Calendar td = Calendar.getInstance();
             td.set(Calendar.HOUR_OF_DAY, 0);
@@ -5191,9 +5236,7 @@ public class MainActivity extends Activity {
                 info.addView(titleLine);
 
                 String topics = e.topics == null ? "" : e.topics.trim();
-                if (!topics.isEmpty()) {
-                    info.addView(muted("الفصول " + topics));
-                }
+                if (!topics.isEmpty()) info.addView(muted("الفصول " + topics));
                 TextView prep = muted("مستوى التحضير: " + Math.max(0, Math.min(100, e.prepLevel)) + "%");
                 prep.setTextSize(12);
                 info.addView(prep);
@@ -5222,10 +5265,23 @@ public class MainActivity extends Activity {
             }
         }
 
-        box.addView(space(dp(110)));
-        root.addView(sc, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        root.addView(fixedAddBar("إضافة امتحان", () -> showExamDialog(null)));
+        LinearLayout.LayoutParams scrollLp =
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        root.addView(sc, scrollLp);
+
+        TextView addBtn = primaryBtn("+ إضافة امتحان");
+        addBtn.setTextSize(16);
+        addBtn.setOnClickListener(v -> showExamDialog(null));
+
+        LinearLayout addBar = new LinearLayout(this);
+        addBar.setGravity(Gravity.CENTER);
+        addBar.setPadding(dp(12), dp(6), dp(12), dp(6));
+        addBar.setBackgroundColor(BG);
+        addBar.addView(addBtn, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+        root.addView(addBar, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(60)));
+
         return root;
     }
 
