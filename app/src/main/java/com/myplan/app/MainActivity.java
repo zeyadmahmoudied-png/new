@@ -127,6 +127,8 @@ public class MainActivity extends Activity {
     private int taskSortKey = 1;
     /** true = تصاعدي (↑) · false = تنازلي (↓) */
     private boolean taskSortAsc = false;
+    /** 0 = الأقرب · 1 = التجهيز */
+    private int examSortMode = 0;
     /** دليل المستخدم: 0 مغلق · 1 قائمة مواضيع · 2 شرح موضوع */
     private int guideMode = 0;
     private int guideTopic = -1;
@@ -597,23 +599,20 @@ public class MainActivity extends Activity {
 
     private void setScheduleModeTabStyle(TextView tv, boolean selected) {
         tv.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-        // اسم الوضع المختار يظل ظاهرًا بوضوح، والخط الأزرق أسفله يظل هو مؤشر الاختيار.
         tv.setTextColor(selected ? ACCENT : 0xFFB9C4D8);
         tv.setGravity(Gravity.CENTER);
         tv.setIncludeFontPadding(false);
         tv.setSingleLine(true);
-        tv.setPadding(dp(8),dp(8),dp(8),dp(7));
-        android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();
-        bg.setColor(0x00000000);
-        bg.setCornerRadius(dp(8));
-        if(selected){
-            android.graphics.drawable.LayerDrawable layer=new android.graphics.drawable.LayerDrawable(
-                    new android.graphics.drawable.Drawable[]{bg,
-                            new android.graphics.drawable.InsetDrawable(
-                                    new android.graphics.drawable.ColorDrawable(0xFF2457D6),dp(8),dp(39),dp(8),0)});
-            tv.setBackground(layer);
-        }else{
-            tv.setBackground(bg);
+        tv.setPadding(dp(8), dp(8), dp(8), dp(7));
+        tv.setBackgroundColor(0x00000000);
+        String label = tv.getText() == null ? "" : tv.getText().toString();
+        if (selected) {
+            android.text.SpannableString ss = new android.text.SpannableString(label);
+            ss.setSpan(new android.text.style.UnderlineSpan(), 0, ss.length(),
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            tv.setText(ss);
+        } else {
+            tv.setText(label);
         }
     }
 
@@ -693,6 +692,7 @@ public class MainActivity extends Activity {
         int halfScreen=Math.max(dp(210), getResources().getDisplayMetrics().widthPixels/2);
         tabsWrap.addView(tabs,new LinearLayout.LayoutParams(halfScreen,dp(44)));
         box.addView(tabsWrap);
+        if (dayEditMode) { TextView editHint = muted("اسحب المحاضرة مباشرة، وعدّي بها بين المحاضرات أو ليوم آخر."); editHint.setTextColor(ACCENT); box.addView(editHint); box.addView(space(dp(8))); }
         box.addView(space(dp(16)));
 
         if(scheduleViewMode==0 && !dayEditMode){
@@ -794,8 +794,8 @@ public class MainActivity extends Activity {
         }
         head.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
         if (scheduleViewMode == 0) {
-            TextView dayPencil = ghostBtn(dayEditMode ? "✓" : "✏️");
-            dayPencil.setTextSize(16);
+            TextView dayPencil = new TextView(this); dayPencil.setText(dayEditMode ? "✓" : "✏️");
+            dayPencil.setTextSize(20); dayPencil.setGravity(Gravity.CENTER); dayPencil.setBackgroundColor(0x00000000);
             dayPencil.setContentDescription("تعديل اليوم");
             dayPencil.setOnClickListener(v -> {
                 dayEditMode = !dayEditMode;
@@ -807,8 +807,8 @@ public class MainActivity extends Activity {
             head.addView(dayPencil,new LinearLayout.LayoutParams(dp(48),dp(42)));
         }
         if (scheduleViewMode == 1 || scheduleViewMode == 2) {
-            TextView periodPencil = ghostBtn(dayEditMode ? "✓" : "✏️");
-            periodPencil.setTextSize(16);
+            TextView periodPencil = new TextView(this); periodPencil.setText(dayEditMode ? "✓" : "✏️");
+            periodPencil.setTextSize(20); periodPencil.setGravity(Gravity.CENTER); periodPencil.setBackgroundColor(0x00000000);
             periodPencil.setContentDescription(scheduleViewMode == 1 ? "تعديل الأسبوع" : "تعديل المخصص");
             periodPencil.setOnClickListener(v -> {
                 dayEditMode = !dayEditMode;
@@ -1121,10 +1121,7 @@ public class MainActivity extends Activity {
 
         final boolean[] open = {false};
         View.OnClickListener toggleOrEdit = v -> {
-            if (dayEditMode && !s.done) {
-                showPostponeSessionDialog(s);
-                return;
-            }
+            if (dayEditMode && !s.done) return;
             open[0] = !open[0];
             details.setVisibility(open[0] ? View.VISIBLE : View.GONE);
         };
@@ -1150,28 +1147,44 @@ public class MainActivity extends Activity {
      */
     private void enableSessionFreeDrag(View card, Planner.Session s) {
         if (s == null || s.done) return;
-        card.setLongClickable(true);
-        card.setOnLongClickListener(v -> {
-            try {
-                v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            } catch (Exception ignored) {}
-            draggingSession = s;
-            draggingCardView = v;
-            v.setAlpha(0.4f);
-            android.content.ClipData data = android.content.ClipData.newPlainText("sessionId", s.id);
-            View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
-            boolean started;
-            if (Build.VERSION.SDK_INT >= 24) {
-                started = v.startDragAndDrop(data, shadow, s, 0);
-            } else {
-                started = v.startDrag(data, shadow, s, 0);
+        card.setLongClickable(false);
+        final float[] down = new float[2];
+        final boolean[] started = {false};
+        card.setOnTouchListener((v, ev) -> {
+            if (!dayEditMode) return false;
+            switch (ev.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    down[0] = ev.getRawX();
+                    down[1] = ev.getRawY();
+                    started[0] = false;
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (!started[0] &&
+                            Math.hypot(ev.getRawX()-down[0], ev.getRawY()-down[1]) > dp(8)) {
+                        started[0] = true;
+                        draggingSession = s;
+                        draggingCardView = v;
+                        v.setAlpha(0.35f);
+                        android.content.ClipData data =
+                                android.content.ClipData.newPlainText("sessionId", s.id);
+                        View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
+                        boolean ok = Build.VERSION.SDK_INT >= 24
+                                ? v.startDragAndDrop(data, shadow, s, 0)
+                                : v.startDrag(data, shadow, s, 0);
+                        if (!ok) {
+                            v.setAlpha(1f);
+                            draggingSession = null;
+                            draggingCardView = null;
+                            started[0] = false;
+                        }
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    return started[0];
+                default:
+                    return true;
             }
-            if (!started) {
-                v.setAlpha(1f);
-                draggingSession = null;
-                draggingCardView = null;
-            }
-            return true;
         });
     }
 
@@ -5219,6 +5232,7 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
         ScrollView sc = new ScrollView(this);
         sc.setFillViewport(true);
         sc.setClipToPadding(false);
@@ -5233,7 +5247,25 @@ public class MainActivity extends Activity {
         h.setTypeface(Typeface.DEFAULT_BOLD);
         h.setGravity(Gravity.RIGHT);
         box.addView(h);
-        box.addView(space(dp(14)));
+        box.addView(space(dp(8)));
+
+        // عرض الامتحانات: اختيار واحد واضح فقط.
+        LinearLayout viewRow = new LinearLayout(this);
+        viewRow.setGravity(Gravity.CENTER_VERTICAL);
+        viewRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        TextView viewLabel = muted("العرض");
+        viewLabel.setTextColor(ACCENT);
+        viewLabel.setTextSize(14);
+        viewLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        viewRow.addView(viewLabel);
+        viewRow.addView(space(dp(8)));
+        TextView viewBtn = ghostBtn(examSortMode == 0 ? "الأقرب" : "التجهيز");
+        viewBtn.setTextSize(14);
+        viewBtn.setTextColor(ACCENT);
+        viewBtn.setOnClickListener(v -> showExamViewChoices(viewBtn));
+        viewRow.addView(viewBtn, new LinearLayout.LayoutParams(dp(105), dp(38)));
+        box.addView(viewRow);
+        box.addView(space(dp(10)));
 
         if (planner.exams.isEmpty()) {
             box.addView(emptyState("مفيش امتحانات مضافة لسه."));
@@ -5245,15 +5277,63 @@ public class MainActivity extends Activity {
             td.set(Calendar.MINUTE, 0);
             td.set(Calendar.SECOND, 0);
             td.set(Calendar.MILLISECOND, 0);
-            for (Planner.Exam e : planner.exams) {
+
+            ArrayList<Planner.Exam> exams = new ArrayList<>(planner.exams);
+            Collections.sort(exams, (a,b) -> {
+                if (examSortMode == 1) {
+                    int p = Integer.compare(
+                            Math.max(0, Math.min(100, b.prepLevel)),
+                            Math.max(0, Math.min(100, a.prepLevel)));
+                    if (p != 0) return p;
+                }
+                long da = Long.MAX_VALUE, db = Long.MAX_VALUE;
+                try { da = Planner.dayCal(a.day).getTimeInMillis(); } catch(Exception ignored) {}
+                try { db = Planner.dayCal(b.day).getTimeInMillis(); } catch(Exception ignored) {}
+                return Long.compare(da, db);
+            });
+
+            for (Planner.Exam e : exams) {
                 LinearLayout ex = card();
-                ex.setPadding(dp(14), dp(12), dp(14), dp(12));
-                ex.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+                ex.setOrientation(LinearLayout.VERTICAL);
+                ex.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                ex.setPadding(dp(14), dp(12), dp(14), dp(10));
+
                 int days = 999;
                 try {
                     Calendar d = Planner.dayCal(e.day);
                     days = (int)((d.getTimeInMillis()-td.getTimeInMillis())/86400000L);
                 } catch (Exception ignored) {}
+
+                LinearLayout top = new LinearLayout(this);
+                top.setGravity(Gravity.CENTER_VERTICAL);
+                top.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+                LinearLayout names = new LinearLayout(this);
+                names.setOrientation(LinearLayout.VERTICAL);
+                names.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+                names.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+                TextView subjectTv = new TextView(this);
+                String subjectText = e.subject == null ? "" : e.subject.trim();
+                subjectTv.setText(subjectText.isEmpty() ? "المادة" : subjectText);
+                subjectTv.setTextColor(ACCENT);
+                subjectTv.setTextSize(15);
+                subjectTv.setTypeface(Typeface.DEFAULT_BOLD);
+                subjectTv.setGravity(Gravity.RIGHT);
+                names.addView(subjectTv);
+
+                TextView titleLine = new TextView(this);
+                String examName = e.title == null || e.title.trim().isEmpty() ? "امتحان" : e.title.trim();
+                titleLine.setText(examName);
+                titleLine.setTextColor(TEXT);
+                titleLine.setTextSize(20);
+                titleLine.setTypeface(Typeface.DEFAULT_BOLD);
+                titleLine.setGravity(Gravity.RIGHT);
+                titleLine.setSingleLine(true);
+                titleLine.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                names.addView(titleLine);
+
+                top.addView(names, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
                 TextView cd = new TextView(this);
                 cd.setText(days < 0 ? "عدّى" : days == 0 ? "النهارده" : "بعد " + days + " يوم");
@@ -5263,74 +5343,62 @@ public class MainActivity extends Activity {
                 cd.setTypeface(Typeface.DEFAULT_BOLD);
                 GradientDrawable cb = new GradientDrawable();
                 cb.setColor(0xFF1B2637);
-                cb.setCornerRadius(dp(14));
+                cb.setCornerRadius(dp(12));
                 cd.setBackground(cb);
-                cd.setPadding(dp(8),dp(7),dp(8),dp(7));
-                ex.addView(cd,new LinearLayout.LayoutParams(dp(82),dp(40)));
-                ex.addView(space(dp(10)));
+                cd.setPadding(dp(8), dp(7), dp(8), dp(7));
+                top.addView(cd, new LinearLayout.LayoutParams(dp(88), dp(40)));
 
-                LinearLayout info = new LinearLayout(this);
-                info.setOrientation(LinearLayout.VERTICAL);
-                info.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-                info.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-                String subjectText=e.subject==null?"":e.subject.trim();
-                String examName=e.title==null||e.title.trim().isEmpty()?"امتحان":e.title.trim();
+                ex.addView(top);
+                ex.addView(space(dp(8)));
 
-                TextView subjectTv=new TextView(this);
-                subjectTv.setText(subjectText.isEmpty() ? "المادة" : subjectText);
-                subjectTv.setTextColor(ACCENT);
-                subjectTv.setTextSize(13);
-                subjectTv.setTypeface(Typeface.DEFAULT_BOLD);
-                subjectTv.setGravity(Gravity.RIGHT);
-                info.addView(subjectTv);
-
-                TextView titleLine=new TextView(this);
-                titleLine.setText(examName);
-                titleLine.setTextColor(TEXT);
-                titleLine.setTextSize(20);
-                titleLine.setTypeface(Typeface.DEFAULT_BOLD);
-                titleLine.setGravity(Gravity.RIGHT);
-                titleLine.setSingleLine(true);
-                titleLine.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                info.addView(titleLine);
-
-                TextView prepLabel=new TextView(this);
-                prepLabel.setText("مستوى التجهيز: "+Math.max(0,Math.min(100,e.prepLevel))+"%");
+                TextView prepLabel = new TextView(this);
+                int prep = Math.max(0, Math.min(100, e.prepLevel));
+                prepLabel.setText("مستوى التجهيز  " + prep + "%");
                 prepLabel.setTextColor(ACCENT);
                 prepLabel.setTextSize(13);
                 prepLabel.setTypeface(Typeface.DEFAULT_BOLD);
                 prepLabel.setGravity(Gravity.RIGHT);
-                info.addView(prepLabel);
+                ex.addView(prepLabel);
 
-                SeekBar prepBar=new SeekBar(this);
+                SeekBar prepBar = new SeekBar(this);
                 prepBar.setMax(100);
-                prepBar.setProgress(Math.max(0,Math.min(100,e.prepLevel)));
-                prepBar.setPadding(0,dp(3),0,0);
-                if(Build.VERSION.SDK_INT>=21){
+                prepBar.setProgress(prep);
+                prepBar.setPadding(0, dp(2), 0, 0);
+                if (Build.VERSION.SDK_INT >= 21) {
                     prepBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));
                     prepBar.setThumbTintList(android.content.res.ColorStateList.valueOf(ACCENT));
                 }
-                info.addView(prepBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(24)));
-                ex.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
-                ex.setOnClickListener(v->showExamDialog(e));
-                LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
-                ep.bottomMargin=dp(10);
+                ex.addView(prepBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
+
+                ex.setOnClickListener(v -> showExamDialog(e));
+                LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                ep.bottomMargin = dp(10);
                 ex.setLayoutParams(ep);
                 box.addView(ex);
             }
         }
 
-        root.addView(sc,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1f));
-        TextView addBtn=primaryBtn("+ إضافة امتحان");
+        root.addView(sc, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        TextView addBtn = primaryBtn("+ إضافة امتحان");
         addBtn.setTextSize(16);
-        addBtn.setOnClickListener(v->showExamDialog(null));
-        LinearLayout addBar=new LinearLayout(this);
+        addBtn.setOnClickListener(v -> showExamDialog(null));
+        LinearLayout addBar = new LinearLayout(this);
         addBar.setGravity(Gravity.CENTER);
-        addBar.setPadding(dp(12),dp(6),dp(12),dp(6));
+        addBar.setPadding(dp(12), dp(6), dp(12), dp(6));
         addBar.setBackgroundColor(BG);
-        addBar.addView(addBtn,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(48)));
-        root.addView(addBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(60)));
+        addBar.addView(addBtn, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+        root.addView(addBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(60)));
         return root;
+    }
+
+    private void showExamViewChoices(TextView anchor) {
+        String[] choices = {"الأقرب", "التجهيز"};
+        int selected = examSortMode;
+        showFloatingChoices(anchor, choices, selected, idx -> {
+            examSortMode = idx;
+            showTab(2);
+        });
     }
 
     private void showExamDialog(Planner.Exam existing) {
