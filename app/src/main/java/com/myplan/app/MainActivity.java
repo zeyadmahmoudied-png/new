@@ -124,7 +124,7 @@ public class MainActivity extends Activity {
     private boolean tasksGroupBySubject = false;
     /** وضع العرض: 0 نوع · 1 مادة · 2 مدة · 3 أولوية — عرض فقط */
     private int taskKindFilter = -1;
-    private int taskSortKey = 0;
+    private int taskSortKey = 1;
     /** true = تصاعدي (↑) · false = تنازلي (↓) */
     private boolean taskSortAsc = false;
     /** دليل المستخدم: 0 مغلق · 1 قائمة مواضيع · 2 شرح موضوع */
@@ -695,11 +695,28 @@ public class MainActivity extends Activity {
         box.addView(tabsWrap);
         box.addView(space(dp(16)));
 
-        if(scheduleViewMode==0){
+        if(scheduleViewMode==0 && !dayEditMode){
             List<Planner.Session> today=planner.sessionsForDay(Planner.todayStr());
             addSchedulePeriodHeader(box,"",Planner.todayStr(),today);
             addScheduleDayBlock(box,Planner.todayStr(),true);
         } else {
+            // في وضع تعديل "اليوم" نعرض أيام الأسبوع كلها كمساحات إسقاط،
+            // حتى يمكن نقل أي جلسة ليوم آخر ووقت آخر، وليس تأجيلها فقط.
+            Calendar c=Calendar.getInstance();
+            c.set(Calendar.HOUR_OF_DAY,0); c.set(Calendar.MINUTE,0); c.set(Calendar.SECOND,0); c.set(Calendar.MILLISECOND,0);
+            int diff=c.get(Calendar.DAY_OF_WEEK)-Calendar.SATURDAY;
+            if(diff<0) diff+=7;
+            c.add(Calendar.DAY_OF_YEAR,-diff);
+            int days=7;
+            for(int k=0;k<days;k++){
+                String day=String.format(Locale.US,"%04d-%02d-%02d",c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH));
+                List<Planner.Session> daySessions=planner.sessionsForDay(day);
+                addSchedulePeriodHeader(box,"",day,daySessions);
+                addScheduleDayBlock(box,day,true);
+                c.add(Calendar.DAY_OF_YEAR,1);
+            }
+            if(scheduleViewMode==0) return sc;
+
             Calendar c=Calendar.getInstance(); c.set(Calendar.HOUR_OF_DAY,0);c.set(Calendar.MINUTE,0);c.set(Calendar.SECOND,0);c.set(Calendar.MILLISECOND,0);
             if(scheduleViewMode==1){int diff=c.get(Calendar.DAY_OF_WEEK)-Calendar.SATURDAY;if(diff<0)diff+=7;c.add(Calendar.DAY_OF_YEAR,-diff);}
             int days=scheduleViewMode==1?7:Math.max(1,planner.settings.planDays);
@@ -3096,7 +3113,8 @@ public class MainActivity extends Activity {
     private void loadTaskSortPrefs() {
         try {
             android.content.SharedPreferences p = getSharedPreferences("myplan_ui", MODE_PRIVATE);
-            taskSortKey = p.getInt("taskSortKey", 0);
+            taskSortKey = p.getInt("taskSortKey", 1);
+            if (taskSortKey == 0) taskSortKey = 1;
             taskSortAsc = p.getBoolean("taskSortAsc", false);
         } catch (Exception ignored) {}
     }
