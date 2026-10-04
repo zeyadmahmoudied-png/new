@@ -6309,23 +6309,16 @@ public class MainActivity extends Activity {
     }
 
     private void styleDialogChoice(TextView t, boolean on) {
-        // كل حقول الاختيار في نماذج الإضافة بنفس الأزرق المشبع، بدون لون باهت للعنصر المحدد.
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0xFF193A86);
-        bg.setCornerRadius(dp(RADIUS_SM));
-        bg.setStroke(dp(1), 0x664B6DFF);
-        t.setTextColor(Color.WHITE);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
-        t.setBackground(bg);
+        styleDialogChoice(t);
     }
 
     private void styleDialogChoice(TextView t) {
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(0xFF193A86);
         bg.setCornerRadius(dp(RADIUS_SM));
-        bg.setStroke(dp(1), 0x664B6DFF);
+        bg.setStroke(dp(1), 0xFF4B6DFF);
         t.setTextColor(Color.WHITE);
-        t.setTypeface(Typeface.DEFAULT);
+        t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setBackground(bg);
     }
 
