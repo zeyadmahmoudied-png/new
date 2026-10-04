@@ -2,6 +2,12 @@ package com.myplan.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -26,6 +32,7 @@ public class LoginActivity extends Activity {
     private static final int TEXT = 0xFFF0F3F8;
     private static final int MUTED = 0xFF8B95A8;
     private static final int ACCENT = 0xFF4B6DFF;
+    private static final int REQ_RESTORE_BACKUP = 2101;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -197,52 +204,76 @@ public class LoginActivity extends Activity {
         card.addView(switchBtn, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
-        if (!reg && LocalBackupHelper.hasValidBackup(this)) {
-            card.addView(space(dp(12)));
-            TextView restoreNote = new TextView(this);
-            restoreNote.setText("توجد نسخة احتياطية محلية على هذا الجهاز");
-            restoreNote.setTextColor(MUTED);
-            restoreNote.setTextSize(12);
-            card.addView(restoreNote);
-            card.addView(space(dp(6)));
-            Button restoreBtn = new Button(this);
-            restoreBtn.setText("استعادة نسخة احتياطية");
-            restoreBtn.setAllCaps(false);
-            restoreBtn.setTextColor(0xFFFFFFFF);
-            restoreBtn.setTextSize(14);
-            GradientDrawable rbg = new GradientDrawable();
-            rbg.setColor(0xFF2A9D6E);
-            rbg.setCornerRadius(dp(10));
-            restoreBtn.setBackground(rbg);
-            restoreBtn.setOnClickListener(v -> confirmRestoreBackup());
-            card.addView(restoreBtn, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
-        }
+        // الاستعادة من ملف الجهاز متاحة حتى في أول تثبيت؛ لا نعتمد على نسخة داخلية
+        // لأن ملفات مجلد التطبيق تُحذف عند إزالة التطبيق.
+        card.addView(space(dp(12)));
+        TextView restoreNote = new TextView(this);
+        restoreNote.setText("عندك نسخة My Plan محفوظة على الجهاز؟ تقدر تستعيدها حتى لو دي أول مرة تثبّت التطبيق.");
+        restoreNote.setTextColor(MUTED);
+        restoreNote.setTextSize(12);
+        restoreNote.setGravity(Gravity.RIGHT);
+        card.addView(restoreNote);
+        card.addView(space(dp(6)));
+        Button restoreBtn = new Button(this);
+        restoreBtn.setText("استعادة نسخة احتياطية من الجهاز");
+        restoreBtn.setAllCaps(false);
+        restoreBtn.setTextColor(0xFFFFFFFF);
+        restoreBtn.setTextSize(14);
+        GradientDrawable rbg = new GradientDrawable();
+        rbg.setColor(ACCENT);
+        rbg.setCornerRadius(dp(10));
+        restoreBtn.setBackground(rbg);
+        restoreBtn.setOnClickListener(v -> startBackupRestore());
+        card.addView(restoreBtn, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
         box.addView(card);
         return sc;
     }
 
-    private void confirmRestoreBackup() {
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("استعادة النسخة الاحتياطية؟")
-                .setMessage("سيتم استبدال بيانات My Plan الحالية على هذا الجهاز بالنسخة المحفوظة. لا يمكن التراجع بعد التأكيد.")
-                .setPositiveButton("استعادة", (d, w) -> {
-                    try {
-                        String json = LocalBackupHelper.readBackup(this);
-                        if (json == null || json.trim().isEmpty()) {
-                            Toast.makeText(this, "لا توجد نسخة صالحة", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        Planner p = new Planner(this);
-                        p.importJson(json);
-                        Toast.makeText(this, "تمت استعادة النسخة الاحتياطية محليًا", Toast.LENGTH_LONG).show();
-                    } catch (Exception e) {
-                        Toast.makeText(this, "فشلت الاستعادة: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    }
-                })
+    private void startBackupRestore() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        try {
+            startActivityForResult(intent, REQ_RESTORE_BACKUP);
+        } catch (Exception e) {
+            Toast.makeText(this, "لا يمكن فتح اختيار الملفات", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_RESTORE_BACKUP || resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        Uri uri = data.getData();
+        new AlertDialog.Builder(this)
+                .setTitle("استعادة النسخة؟")
+                .setMessage("سيتم استعادة بيانات My Plan من الملف المختار. بعد الاستعادة يمكنك تسجيل الدخول أو إنشاء حساب جديد على هذا الجهاز.")
+                .setPositiveButton("استعادة", (d, w) -> restoreFromUri(uri))
                 .setNegativeButton("إلغاء", null)
                 .show();
+    }
+
+    private void restoreFromUri(Uri uri) {
+        try {
+            InputStream is = getContentResolver().openInputStream(uri);
+            if (is == null) throw new Exception("لا يمكن قراءة الملف");
+            BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) sb.append(line).append('\n');
+            br.close();
+
+            Planner restored = new Planner(this);
+            restored.importJson(sb.toString());
+            Toast.makeText(this,
+                    "تمت استعادة النسخة ✓ يمكنك الآن تسجيل الدخول أو إنشاء حساب جديد.",
+                    Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            String msg = e.getMessage() == null ? "ملف غير صالح" : e.getMessage();
+            Toast.makeText(this, "فشلت الاستعادة — البيانات الحالية لم تتغير. " + msg, Toast.LENGTH_LONG).show();
+        }
     }
 
     private EditText field(String hint) {
