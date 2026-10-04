@@ -6284,7 +6284,7 @@ public class MainActivity extends Activity {
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(0xFF2457D6);
         bg.setCornerRadius(dp(RADIUS_SM));
-        bg.setStroke(dp(1), 0x664B6DFF);
+        bg.setStroke(dp(1), 0xFF4B6DFF);
         e.setBackground(bg);
         return e;
     }
@@ -6314,7 +6314,7 @@ public class MainActivity extends Activity {
 
     private void styleDialogChoice(TextView t) {
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0xFF193A86);
+        bg.setColor(0xFF2457D6);
         bg.setCornerRadius(dp(RADIUS_SM));
         bg.setStroke(dp(1), 0xFF4B6DFF);
         t.setTextColor(Color.WHITE);
