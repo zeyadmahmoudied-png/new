@@ -754,8 +754,8 @@ public class MainActivity extends Activity {
             completedZone.addView(muted("لا توجد محاضرات مكتملة"));
         } else {
             Collections.sort(completedVisible,(a,b)->{
-                int d=String.valueOf(a.day).compareTo(String.valueOf(b.day));
-                return d!=0?d:Integer.compare(a.startMin,b.startMin);
+                int dayCmp=String.valueOf(a.day).compareTo(String.valueOf(b.day));
+                return dayCmp!=0?dayCmp:Integer.compare(a.startMin,b.startMin);
             });
             for(Planner.Session doneSession:completedVisible){
                 completedZone.addView(sessionCard(doneSession));
