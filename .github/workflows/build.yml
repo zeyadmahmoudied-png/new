@@ -1,4 +1,5 @@
 # CI build workflow
+# CI trigger check
 name: Build My Plan APK
 
 on:
