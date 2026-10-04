@@ -147,8 +147,14 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         AppInfrastructure.onLaunch(this);
-        // بوابة: لا واجهة My Plan بدون جلسة صالحة
-        if (!AccountAuth.isLoggedIn(this)) {
+        // بوابة الحساب: الاستعادة الناجحة تمنح دخولًا مباشرًا لهذه الفتحة فقط.
+        boolean restoredDirectEntry = getSharedPreferences("myplan_restore_flow", MODE_PRIVATE)
+                .getBoolean("direct_entry_once", false);
+        if (restoredDirectEntry) {
+            getSharedPreferences("myplan_restore_flow", MODE_PRIVATE)
+                    .edit().remove("direct_entry_once").apply();
+        }
+        if (!AccountAuth.isLoggedIn(this) && !restoredDirectEntry) {
             Intent login = new Intent(this, LoginActivity.class);
             if (getIntent() != null && getIntent().getExtras() != null) {
                 login.putExtras(getIntent().getExtras());
@@ -771,6 +777,19 @@ public class MainActivity extends Activity {
             info.addView(range);
         }
         head.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+        if (scheduleViewMode == 1 || scheduleViewMode == 2) {
+            TextView periodPencil = ghostBtn(dayEditMode ? "✓" : "✏️");
+            periodPencil.setTextSize(16);
+            periodPencil.setContentDescription(scheduleViewMode == 1 ? "تعديل الأسبوع" : "تعديل المخصص");
+            periodPencil.setOnClickListener(v -> {
+                dayEditMode = !dayEditMode;
+                Toast.makeText(this,
+                        dayEditMode ? "وضع تعديل وترتيب الجلسات مفعّل" : "تم إيقاف وضع التعديل",
+                        Toast.LENGTH_SHORT).show();
+                showTab(0);
+            });
+            head.addView(periodPencil,new LinearLayout.LayoutParams(dp(48),dp(42)));
+        }
         box.addView(head);
         box.addView(space(dp(10)));
     }
@@ -797,14 +816,6 @@ public class MainActivity extends Activity {
             dayTitle.setTextSize(18);
             dayTitle.setTypeface(Typeface.DEFAULT_BOLD);
             dayHead.addView(dayTitle,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
-            TextView pencil = ghostBtn(dayEditMode ? "✓" : "✏️");
-            pencil.setTextSize(14);
-            pencil.setOnClickListener(v -> {
-                dayEditMode = !dayEditMode;
-                Toast.makeText(this, dayEditMode ? "وضع تعديل وترتيب المحاضرات مفعّل" : "تم إيقاف وضع التعديل", Toast.LENGTH_SHORT).show();
-                showTab(0);
-            });
-            dayHead.addView(pencil,new LinearLayout.LayoutParams(dp(44),dp(38)));
             dayHead.addView(muted(day),new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT));
             box.addView(dayHead);
             box.addView(space(dp(8)));
@@ -888,14 +899,6 @@ public class MainActivity extends Activity {
             laterHead.setGravity(Gravity.CENTER_VERTICAL);
             TextView laterTitle = sectionHeader("لاحقًا");
             laterHead.addView(laterTitle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            TextView pencil = ghostBtn(dayEditMode ? "✓" : "✏️");
-            pencil.setTextSize(16);
-            pencil.setOnClickListener(v -> {
-                dayEditMode = !dayEditMode;
-                Toast.makeText(this, dayEditMode ? "وضع تعديل وترتيب المحاضرات مفعّل" : "تم إيقاف وضع التعديل", Toast.LENGTH_SHORT).show();
-                showTab(0);
-            });
-            laterHead.addView(pencil, new LinearLayout.LayoutParams(dp(48), dp(40)));
             box.addView(laterHead);
             box.addView(space(dp(6)));
         }
@@ -2972,11 +2975,18 @@ public class MainActivity extends Activity {
         tabs.addView(space(dp(6)));
         tabs.addView(study, chipLp());
 
-        TextView filter = chip("طريقة العرض ▾", taskSortKey == 0);
+        LinearLayout filterRow = new LinearLayout(this);
+        filterRow.setOrientation(LinearLayout.HORIZONTAL);
+        filterRow.setGravity(Gravity.CENTER_VERTICAL);
+        filterRow.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        TextView filter = chip("العرض", taskSortKey == 0);
+        filter.setTextSize(12);
+        filter.setPadding(dp(10),dp(5),dp(10),dp(5));
         filter.setOnClickListener(v -> showTaskViewChoices(v));
-        box.addView(filter);
-        box.addView(space(dp(10)));
-        box.addView(tabs);
+        filterRow.addView(filter, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,dp(36)));
+        filterRow.addView(space(dp(10)));
+        filterRow.addView(tabs, new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+        box.addView(filterRow);
         box.addView(space(dp(14)));
 
         List<Planner.Task> list = new ArrayList<>(planner.tasks);
@@ -5242,6 +5252,14 @@ public class MainActivity extends Activity {
                 titleLine.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 info.addView(titleLine);
 
+                TextView prepLabel=new TextView(this);
+                prepLabel.setText("مستوى التجهيز: "+Math.max(0,Math.min(100,e.prepLevel))+"%");
+                prepLabel.setTextColor(ACCENT);
+                prepLabel.setTextSize(12);
+                prepLabel.setTypeface(Typeface.DEFAULT_BOLD);
+                prepLabel.setGravity(Gravity.RIGHT);
+                info.addView(prepLabel);
+
                 SeekBar prepBar=new SeekBar(this);
                 prepBar.setMax(100);
                 prepBar.setProgress(Math.max(0,Math.min(100,e.prepLevel)));
@@ -5290,7 +5308,7 @@ public class MainActivity extends Activity {
         LinearLayout moreBox=new LinearLayout(this);moreBox.setOrientation(LinearLayout.VERTICAL);moreBox.setVisibility(View.GONE);moreBox.setPadding(0,dp(8),0,0);
         TextView topicsLabel=label("الفصول أو الأجزاء");topicsLabel.setTextColor(TEXT);moreBox.addView(topicsLabel);
         EditText topics=dialogField();topics.setHint("اختياري");if(existing!=null&&existing.topics!=null)topics.setText(existing.topics);moreBox.addView(topics);
-        moreBox.addView(space(dp(8)));final int[] prep={existing!=null?existing.prepLevel:40};TextView prepTv=new TextView(this);prepTv.setText("مستوى التحضير: "+prep[0]+"%");prepTv.setTextColor(TEXT);prepTv.setTextSize(12);SeekBar prepBar=new SeekBar(this);prepBar.setMax(100);prepBar.setProgress(prep[0]);prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){prep[0]=p;prepTv.setText("مستوى التحضير: "+p+"%");}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});moreBox.addView(prepTv);moreBox.addView(prepBar);
+        moreBox.addView(space(dp(8)));final int[] prep={existing!=null?existing.prepLevel:40};TextView prepTv=new TextView(this);prepTv.setText("مستوى التجهيز: "+prep[0]+"%");prepTv.setTextColor(TEXT);prepTv.setTextSize(12);SeekBar prepBar=new SeekBar(this);prepBar.setMax(100);prepBar.setProgress(prep[0]);prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){prep[0]=p;prepTv.setText("مستوى التجهيز: "+p+"%");}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});moreBox.addView(prepTv);moreBox.addView(prepBar);
         moreBox.addView(space(dp(8)));TextView lastLabel=label("آخر محاضرة داخلة في الامتحان");lastLabel.setTextColor(TEXT);moreBox.addView(lastLabel);TextView lastHint=muted("مثال: محاضرة 7 → الامتحان يشمل 1…7.");lastHint.setTextColor(MUTED);moreBox.addView(lastHint);
         final String[] lastLecId={existing!=null&&existing.lastLectureTaskId!=null?existing.lastLectureTaskId:""};String lastLecLabel="بدون تحديد";if(!lastLecId[0].isEmpty()){Planner.Task lt=planner.findTask(lastLecId[0]);if(lt!=null){int n=Planner.lectureNumber(lt);lastLecLabel=(n>=0?("محاضرة "+n+" — "):"")+(lt.name==null?"?":lt.name);}}
         TextView lastLecTv=dialogChoice(lastLecLabel);
