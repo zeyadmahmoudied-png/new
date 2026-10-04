@@ -267,6 +267,9 @@ public class LoginActivity extends Activity {
 
             Planner restored = new Planner(this);
             restored.importJson(sb.toString());
+            // السماح بدخول مباشر لمرة واحدة بعد نجاح الاستعادة، ثم تعود بوابة الحساب لطبيعتها.
+            getSharedPreferences("myplan_restore_flow", MODE_PRIVATE)
+                    .edit().putBoolean("direct_entry_once", true).apply();
             Toast.makeText(this,
                     "تمت استعادة النسخة ✓ جاري فتح My Plan مباشرة.",
                     Toast.LENGTH_LONG).show();
