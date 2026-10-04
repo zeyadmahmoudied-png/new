@@ -591,8 +591,11 @@ public class MainActivity extends Activity {
 
     private void setScheduleModeTabStyle(TextView tv, boolean selected) {
         tv.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-        tv.setTextColor(selected ? Color.WHITE : 0xFFB9C4D8);
+        // اسم الوضع المختار يظل ظاهرًا بوضوح، والخط الأزرق أسفله يظل هو مؤشر الاختيار.
+        tv.setTextColor(selected ? ACCENT : 0xFFB9C4D8);
         tv.setGravity(Gravity.CENTER);
+        tv.setIncludeFontPadding(false);
+        tv.setSingleLine(true);
         tv.setPadding(dp(8),dp(8),dp(8),dp(7));
         android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();
         bg.setColor(0x00000000);
@@ -650,12 +653,12 @@ public class MainActivity extends Activity {
         TextView dt=muted(hc.get(Calendar.DAY_OF_MONTH)+" "+mons[hc.get(Calendar.MONTH)]); dt.setTextSize(13); tt.addView(dt);
         TextView h=title("جدولي"); h.setTextSize(32); tt.addView(h);
         top.addView(tt,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
-        TextView edit=primaryBtn("إنشاء الخطة"); edit.setTextSize(13);
+        TextView edit=primaryBtn("إنشاء الخطة"); edit.setTextSize(12);
         edit.setOnClickListener(v->{requestExactAlarmIfNeeded(); if(planner.tasks.isEmpty()) Toast.makeText(this,"ضيف مهام الأول من تبويب المهام",Toast.LENGTH_SHORT).show(); else askPlanDaysAndBuild();});
-        top.addView(edit,new LinearLayout.LayoutParams(dp(104),dp(42)));
+        top.addView(edit,new LinearLayout.LayoutParams(dp(98),dp(40)));
         top.addView(space(dp(6)));
-        TextView more=ghostBtn("•••"); more.setOnClickListener(v->showScheduleMoreMenu(v));
-        top.addView(more,new LinearLayout.LayoutParams(dp(44),dp(42)));
+        TextView more=ghostBtn("⋮"); more.setOnClickListener(v->showScheduleMoreMenu(v));
+        top.addView(more,new LinearLayout.LayoutParams(dp(40),dp(40)));
         box.addView(top); box.addView(space(dp(10)));
 
         // تبويبات الجدول: ثلاث اختيارات واضحة في نصف الشاشة الأيمن.
@@ -731,7 +734,7 @@ public class MainActivity extends Activity {
 
         DayGaugeView gauge=new DayGaugeView(this);
         gauge.setProgress(pct);
-        head.addView(gauge,new LinearLayout.LayoutParams(dp(70),dp(70)));
+        head.addView(gauge,new LinearLayout.LayoutParams(dp(80),dp(80)));
 
         LinearLayout info=new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
@@ -2968,6 +2971,8 @@ public class MainActivity extends Activity {
         lp.leftMargin=0;
         lp.rightMargin=0;
         lp.bottomMargin=0;
+        // تثبيت شريط الإضافة داخل مساحة المحتوى نفسها، بحيث يكون مباشرة فوق شريط الخمس أزرار.
+        bar.setLayoutParams(lp);
         return bar;
     }
 
