@@ -1,5 +1,6 @@
 # CI build workflow
 # CI trigger check
+# APK build requested 2026-10-04
 name: Build My Plan APK
 
 on:
