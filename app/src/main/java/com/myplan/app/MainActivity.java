@@ -4133,13 +4133,19 @@ public class MainActivity extends Activity {
             Calendar d = (Calendar)base.clone();
             d.add(Calendar.DAY_OF_MONTH, -i);
             String day = Planner.DAY.format(d.getTime());
-            int total = 0, done = 0;
+            int totalMinutes = 0, actualMinutes = 0;
             for (Planner.Session ss : planner.sessions) {
                 if (ss == null || ss.day == null || !day.equals(ss.day)) continue;
-                total++;
-                if (ss.done) done++;
+                int planned = Math.max(0, ss.durationMin);
+                int actual = ss.done
+                        ? planned
+                        : Math.max(0, Math.min(planned, ss.executedMin));
+                totalMinutes += planned;
+                actualMinutes += actual;
             }
-            values[6-i] = total == 0 ? 0 : Math.max(0, Math.min(100, Math.round(done * 100f / total)));
+            // نسبة كل يوم = الدقائق التي قضاها المستخدم فعليًا ÷ إجمالي دقائق اليوم المخططة.
+            values[6-i] = totalMinutes == 0 ? 0
+                    : Math.max(0, Math.min(100, Math.round(actualMinutes * 100f / totalMinutes)));
         }
         return values;
     }
