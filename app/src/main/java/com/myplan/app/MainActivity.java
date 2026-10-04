@@ -640,6 +640,13 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void refreshScheduleModeView() {
+        if (content == null) return;
+        content.removeAllViews();
+        content.addView(buildScheduleScreen());
+        maybeOfferMissedSessions();
+    }
+
     private View buildScheduleScreen() {
         dayDropZones.clear();
         ScrollView sc=new ScrollView(this); sc.setFillViewport(true);
@@ -671,9 +678,9 @@ public class MainActivity extends Activity {
         TextView d=scheduleModeTab("اليوم",scheduleViewMode==0);
         TextView w=scheduleModeTab("الأسبوع",scheduleViewMode==1);
         TextView cu=scheduleModeTab("مخصص",scheduleViewMode==2);
-        d.setOnClickListener(v->{scheduleViewMode=0;weekView=false;showTab(0);});
-        w.setOnClickListener(v->{scheduleViewMode=1;weekView=true;showTab(6);});
-        cu.setOnClickListener(v->{scheduleViewMode=2;weekView=true;showTab(6);});
+        d.setOnClickListener(v->{scheduleViewMode=0;weekView=false;refreshScheduleModeView();});
+        w.setOnClickListener(v->{scheduleViewMode=1;weekView=true;refreshScheduleModeView();});
+        cu.setOnClickListener(v->{scheduleViewMode=2;weekView=true;refreshScheduleModeView();});
         tabs.addView(d,scheduleModeTabLp());
         tabs.addView(w,scheduleModeTabLp());
         tabs.addView(cu,scheduleModeTabLp());
@@ -1910,17 +1917,13 @@ public class MainActivity extends Activity {
 
     /** العودة لنفس عرض الجدول الحالي (يوم / أسبوع / مخصص) دون فرض وضع آخر. */
     private void restoreScheduleView() {
-        if (scheduleViewMode == 1) {
+        if (scheduleViewMode == 1 || scheduleViewMode == 2) {
             weekView = true;
-            showTab(6);
-        } else if (scheduleViewMode == 2) {
-            weekView = true;
-            showTab(6);
         } else {
             weekView = false;
             scheduleViewMode = 0;
-            showTab(0);
         }
+        refreshScheduleModeView();
     }
 
 
@@ -2969,11 +2972,11 @@ public class MainActivity extends Activity {
         tabs.addView(space(dp(6)));
         tabs.addView(study, chipLp());
 
-        TextView filter = chip("طريقة العرض ▾", false);
+        TextView filter = chip("طريقة العرض ▾", taskSortKey == 0);
         filter.setOnClickListener(v -> showTaskViewChoices(v));
-        box.addView(tabs);
-        box.addView(space(dp(10)));
         box.addView(filter);
+        box.addView(space(dp(10)));
+        box.addView(tabs);
         box.addView(space(dp(14)));
 
         List<Planner.Task> list = new ArrayList<>(planner.tasks);
@@ -3491,6 +3494,7 @@ public class MainActivity extends Activity {
             open[0] = !open[0];
             details.setVisibility(open[0] ? View.VISIBLE : View.GONE);
         };
+        card.setOnClickListener(toggle);
         info.setOnClickListener(toggle);
         name.setOnClickListener(toggle);
         meta.setOnClickListener(toggle);
@@ -5166,11 +5170,9 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-
         ScrollView sc = new ScrollView(this);
         sc.setFillViewport(true);
         sc.setClipToPadding(false);
-
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(18), dp(18), dp(18), dp(18));
@@ -5194,94 +5196,74 @@ public class MainActivity extends Activity {
             td.set(Calendar.MINUTE, 0);
             td.set(Calendar.SECOND, 0);
             td.set(Calendar.MILLISECOND, 0);
-
             for (Planner.Exam e : planner.exams) {
                 LinearLayout ex = card();
-                ex.setPadding(dp(14), dp(14), dp(14), dp(14));
+                ex.setPadding(dp(14), dp(12), dp(14), dp(12));
                 ex.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
-                ex.setGravity(Gravity.CENTER_VERTICAL);
-
                 int days = 999;
                 try {
                     Calendar d = Planner.dayCal(e.day);
-                    days = (int) ((d.getTimeInMillis() - td.getTimeInMillis()) / 86400000L);
+                    days = (int)((d.getTimeInMillis()-td.getTimeInMillis())/86400000L);
                 } catch (Exception ignored) {}
 
-                TextView cd = muted(days < 0 ? "عدّى" : days == 0 ? "النهاردة" : "بعد " + days + " يوم");
+                TextView cd = new TextView(this);
+                cd.setText(days < 0 ? "عدّى" : days == 0 ? "النهارده" : "بعد " + days + " يوم");
                 cd.setTextColor(TEXT);
                 cd.setGravity(Gravity.CENTER);
                 cd.setTextSize(13);
+                cd.setTypeface(Typeface.DEFAULT_BOLD);
                 GradientDrawable cb = new GradientDrawable();
                 cb.setColor(0xFF1B2637);
                 cb.setCornerRadius(dp(14));
                 cd.setBackground(cb);
-                cd.setPadding(dp(8), dp(8), dp(8), dp(8));
-                ex.addView(cd, new LinearLayout.LayoutParams(dp(88), dp(44)));
+                cd.setPadding(dp(8),dp(7),dp(8),dp(7));
+                ex.addView(cd,new LinearLayout.LayoutParams(dp(82),dp(40)));
                 ex.addView(space(dp(10)));
 
                 LinearLayout info = new LinearLayout(this);
                 info.setOrientation(LinearLayout.VERTICAL);
                 info.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
                 info.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-
-                String subjectText = e.subject == null ? "" : e.subject.trim();
-                String examName = e.title == null || e.title.isEmpty() ? "امتحان" : e.title;
-                TextView titleLine = new TextView(this);
-                titleLine.setText(subjectText.isEmpty() ? examName : subjectText + " — " + examName);
+                String subjectText=e.subject==null?"":e.subject.trim();
+                String examName=e.title==null||e.title.trim().isEmpty()?"امتحان":e.title.trim();
+                TextView titleLine=new TextView(this);
+                titleLine.setText(subjectText.isEmpty()?examName:subjectText+" — "+examName);
                 titleLine.setTextColor(TEXT);
-                titleLine.setTextSize(18);
+                titleLine.setTextSize(17);
                 titleLine.setTypeface(Typeface.DEFAULT_BOLD);
                 titleLine.setGravity(Gravity.RIGHT);
-                titleLine.setMaxLines(2);
+                titleLine.setSingleLine(true);
+                titleLine.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 info.addView(titleLine);
 
-                String topics = e.topics == null ? "" : e.topics.trim();
-                if (!topics.isEmpty()) info.addView(muted("الفصول " + topics));
-                TextView prep = muted("مستوى التحضير: " + Math.max(0, Math.min(100, e.prepLevel)) + "%");
-                prep.setTextSize(12);
-                info.addView(prep);
-
-                ProgressBar prepBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+                SeekBar prepBar=new SeekBar(this);
                 prepBar.setMax(100);
-                prepBar.setProgress(Math.max(0, Math.min(100, e.prepLevel)));
-                if (Build.VERSION.SDK_INT >= 21) {
+                prepBar.setProgress(Math.max(0,Math.min(100,e.prepLevel)));
+                prepBar.setPadding(0,dp(3),0,0);
+                if(Build.VERSION.SDK_INT>=21){
                     prepBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+                    prepBar.setThumbTintList(android.content.res.ColorStateList.valueOf(ACCENT));
                 }
-                info.addView(prepBar, new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(6)));
-
-                ex.addView(info, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-                SubjectIconView ic = new SubjectIconView(this);
-                ic.setSubject(e.subject);
-                ex.addView(ic, new LinearLayout.LayoutParams(dp(44), dp(44)));
-
-                ex.setOnClickListener(v -> showExamDialog(e));
-                LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                ep.bottomMargin = dp(10);
+                info.addView(prepBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(24)));
+                ex.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+                ex.setOnClickListener(v->showExamDialog(e));
+                LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+                ep.bottomMargin=dp(10);
                 ex.setLayoutParams(ep);
                 box.addView(ex);
             }
         }
 
-        LinearLayout.LayoutParams scrollLp =
-                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        root.addView(sc, scrollLp);
-
-        TextView addBtn = primaryBtn("+ إضافة امتحان");
+        root.addView(sc,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1f));
+        TextView addBtn=primaryBtn("+ إضافة امتحان");
         addBtn.setTextSize(16);
-        addBtn.setOnClickListener(v -> showExamDialog(null));
-
-        LinearLayout addBar = new LinearLayout(this);
+        addBtn.setOnClickListener(v->showExamDialog(null));
+        LinearLayout addBar=new LinearLayout(this);
         addBar.setGravity(Gravity.CENTER);
-        addBar.setPadding(dp(12), dp(6), dp(12), dp(6));
+        addBar.setPadding(dp(12),dp(6),dp(12),dp(6));
         addBar.setBackgroundColor(BG);
-        addBar.addView(addBtn, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
-        root.addView(addBar, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(60)));
-
+        addBar.addView(addBtn,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(48)));
+        root.addView(addBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(60)));
         return root;
     }
 
