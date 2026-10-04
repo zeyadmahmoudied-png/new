@@ -683,9 +683,9 @@ public class MainActivity extends Activity {
         TextView d=scheduleModeTab("اليوم",scheduleViewMode==0);
         TextView w=scheduleModeTab("الأسبوع",scheduleViewMode==1);
         TextView cu=scheduleModeTab("مخصص",scheduleViewMode==2);
-        d.setOnClickListener(v->{scheduleViewMode=0;weekView=false;dayEditMode=false;refreshScheduleModeView();});
-        w.setOnClickListener(v->{scheduleViewMode=1;weekView=true;dayEditMode=false;refreshScheduleModeView();});
-        cu.setOnClickListener(v->{scheduleViewMode=2;weekView=true;dayEditMode=false;refreshScheduleModeView();});
+        d.setOnClickListener(v->{scheduleViewMode=0;weekView=false;refreshScheduleModeView();});
+        w.setOnClickListener(v->{scheduleViewMode=1;weekView=true;refreshScheduleModeView();});
+        cu.setOnClickListener(v->{scheduleViewMode=2;weekView=true;refreshScheduleModeView();});
         tabs.addView(d,scheduleModeTabLp());
         tabs.addView(w,scheduleModeTabLp());
         tabs.addView(cu,scheduleModeTabLp());
@@ -695,29 +695,21 @@ public class MainActivity extends Activity {
         if (dayEditMode) { TextView editHint = muted("اسحب المحاضرة مباشرة، وعدّي بها بين المحاضرات أو ليوم آخر."); editHint.setTextColor(ACCENT); box.addView(editHint); box.addView(space(dp(8))); }
         box.addView(space(dp(16)));
 
-        if(scheduleViewMode==0 && !dayEditMode){
+        java.util.ArrayList<Planner.Session> completedVisible = new java.util.ArrayList<>();
+
+        if(scheduleViewMode==0){
             List<Planner.Session> today=planner.sessionsForDay(Planner.todayStr());
             addSchedulePeriodHeader(box,"",Planner.todayStr(),today);
             addScheduleDayBlock(box,Planner.todayStr(),true);
-        } else if (scheduleViewMode==0 && dayEditMode) {
-            // في وضع تعديل "اليوم" نعرض أيام الأسبوع كلها كمساحات إسقاط،
-            // حتى يمكن نقل أي جلسة ليوم آخر ووقت آخر، وليس تأجيلها فقط.
+            if(today!=null) for(Planner.Session s:today) if(s!=null && s.done) completedVisible.add(s);
+        } else {
             Calendar c=Calendar.getInstance();
             c.set(Calendar.HOUR_OF_DAY,0); c.set(Calendar.MINUTE,0); c.set(Calendar.SECOND,0); c.set(Calendar.MILLISECOND,0);
-            int diff=c.get(Calendar.DAY_OF_WEEK)-Calendar.SATURDAY;
-            if(diff<0) diff+=7;
-            c.add(Calendar.DAY_OF_YEAR,-diff);
-            int days=7;
-            for(int k=0;k<days;k++){
-                String day=String.format(Locale.US,"%04d-%02d-%02d",c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH));
-                List<Planner.Session> daySessions=planner.sessionsForDay(day);
-                addSchedulePeriodHeader(box,"",day,daySessions);
-                addScheduleDayBlock(box,day,true);
-                c.add(Calendar.DAY_OF_YEAR,1);
+            if(scheduleViewMode==1){
+                int diff=c.get(Calendar.DAY_OF_WEEK)-Calendar.SATURDAY;
+                if(diff<0) diff+=7;
+                c.add(Calendar.DAY_OF_YEAR,-diff);
             }
-        } else {
-            Calendar c=Calendar.getInstance(); c.set(Calendar.HOUR_OF_DAY,0);c.set(Calendar.MINUTE,0);c.set(Calendar.SECOND,0);c.set(Calendar.MILLISECOND,0);
-            if(scheduleViewMode==1){int diff=c.get(Calendar.DAY_OF_WEEK)-Calendar.SATURDAY;if(diff<0)diff+=7;c.add(Calendar.DAY_OF_YEAR,-diff);}
             int days=scheduleViewMode==1?7:Math.max(1,planner.settings.planDays);
             Calendar start=(Calendar)c.clone();
             List<Planner.Session> periodSessions=new ArrayList<>();
@@ -725,25 +717,52 @@ public class MainActivity extends Activity {
             for(int k=0;k<days;k++){
                 String day=String.format(Locale.US,"%04d-%02d-%02d",c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH));
                 List<Planner.Session> dl=planner.sessionsForDay(day);
-                if(!dl.isEmpty())any=true;
+                if(!dl.isEmpty()) any=true;
                 periodSessions.addAll(dl);
                 c.add(Calendar.DAY_OF_YEAR,1);
             }
-            String periodTitle="";
-            Calendar end=(Calendar)c.clone(); end.add(Calendar.DAY_OF_YEAR,-1);
+            Calendar end=(Calendar)c.clone();
+            end.add(Calendar.DAY_OF_YEAR,-1);
             String periodDate=String.format(Locale.US,"%02d/%02d → %02d/%02d",
                     start.get(Calendar.DAY_OF_MONTH),start.get(Calendar.MONTH)+1,
                     end.get(Calendar.DAY_OF_MONTH),end.get(Calendar.MONTH)+1);
-            addSchedulePeriodHeader(box,periodTitle,periodDate,periodSessions);
+            addSchedulePeriodHeader(box,"",periodDate,periodSessions);
+
             c=(Calendar)start.clone();
             for(int k=0;k<days;k++){
                 String day=String.format(Locale.US,"%04d-%02d-%02d",c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH));
-                if(scheduleViewMode==1&&weekSelectedDow>0&&c.get(Calendar.DAY_OF_WEEK)!=weekSelectedDow){c.add(Calendar.DAY_OF_YEAR,1);continue;}
+                if(scheduleViewMode==1&&weekSelectedDow>0&&c.get(Calendar.DAY_OF_WEEK)!=weekSelectedDow){
+                    c.add(Calendar.DAY_OF_YEAR,1);
+                    continue;
+                }
+                List<Planner.Session> dl=planner.sessionsForDay(day);
+                if(dl!=null) for(Planner.Session ss:dl) if(ss!=null && ss.done) completedVisible.add(ss);
+                // الأسبوع والمخصص: نفس كروت المحاضرات العادية، بدون current/next cards.
                 addScheduleDayBlock(box,day,false);
                 c.add(Calendar.DAY_OF_YEAR,1);
             }
-            if(!any&&planner.sessions.isEmpty())box.addView(emptyState("مفيش خطة لسه.\nضيف مهام واعمل خطتك."));
+            if(!any&&planner.sessions.isEmpty()) box.addView(emptyState("مفيش خطة لسه.\nضيف مهام واعمل خطتك."));
         }
+
+        // المكتملة في آخر الشاشة فقط، وتحتوي على المكتمل فقط.
+        TextView completedHead = sectionHeader("المكتملة");
+        box.addView(completedHead);
+        box.addView(space(dp(6)));
+        LinearLayout completedZone = new LinearLayout(this);
+        completedZone.setOrientation(LinearLayout.VERTICAL);
+        if(completedVisible.isEmpty()){
+            completedZone.addView(muted("لا توجد محاضرات مكتملة"));
+        } else {
+            Collections.sort(completedVisible,(a,b)->{
+                int d=String.valueOf(a.day).compareTo(String.valueOf(b.day));
+                return d!=0?d:Integer.compare(a.startMin,b.startMin);
+            });
+            for(Planner.Session doneSession:completedVisible){
+                completedZone.addView(sessionCard(doneSession));
+            }
+        }
+        box.addView(completedZone);
+        box.addView(space(dp(14)));
         return sc;
     }
 
@@ -802,7 +821,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(this,
                         dayEditMode ? "وضع تعديل وترتيب الجلسات مفعّل" : "تم إيقاف وضع التعديل",
                         Toast.LENGTH_SHORT).show();
-                showTab(0);
+                refreshScheduleModeView();
             });
             head.addView(dayPencil,new LinearLayout.LayoutParams(dp(48),dp(42)));
         }
@@ -815,7 +834,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(this,
                         dayEditMode ? "وضع تعديل وترتيب الجلسات مفعّل" : "تم إيقاف وضع التعديل",
                         Toast.LENGTH_SHORT).show();
-                showTab(0);
+                refreshScheduleModeView();
             });
             head.addView(periodPencil,new LinearLayout.LayoutParams(dp(48),dp(42)));
         }
@@ -968,22 +987,6 @@ public class MainActivity extends Activity {
                 }
                 dayZone.addView(sessionCard(s));
             }
-        }
-        if(showMainCard){
-            TextView completedHead = sectionHeader("المكتملة");
-            box.addView(completedHead);
-            box.addView(space(dp(6)));
-            LinearLayout completedZone=new LinearLayout(this);
-            completedZone.setOrientation(LinearLayout.VERTICAL);
-            boolean hasCompleted=false;
-            for(Planner.Session s:ordered){
-                if(s!=null && s.done){
-                    hasCompleted=true;
-                    completedZone.addView(sessionCard(s));
-                }
-            }
-            if(!hasCompleted) completedZone.addView(muted("لا توجد محاضرات مكتملة"));
-            box.addView(completedZone);
         }
         box.addView(dayZone);
         dayDropZones.put(day,dayZone);
@@ -5284,24 +5287,6 @@ public class MainActivity extends Activity {
         h.setGravity(Gravity.RIGHT);
         box.addView(h);
         box.addView(space(dp(8)));
-
-        // عرض الامتحانات: اختيار واحد واضح فقط.
-        LinearLayout viewRow = new LinearLayout(this);
-        viewRow.setGravity(Gravity.CENTER_VERTICAL);
-        viewRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        TextView viewLabel = muted("العرض");
-        viewLabel.setTextColor(ACCENT);
-        viewLabel.setTextSize(14);
-        viewLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        viewRow.addView(viewLabel);
-        viewRow.addView(space(dp(8)));
-        TextView viewBtn = ghostBtn("العرض");
-        viewBtn.setTextSize(14);
-        viewBtn.setTextColor(ACCENT);
-        viewBtn.setOnClickListener(v -> showExamViewChoices(viewBtn));
-        viewRow.addView(viewBtn, new LinearLayout.LayoutParams(dp(105), dp(38)));
-        box.addView(viewRow);
-        box.addView(space(dp(10)));
 
         if (planner.exams.isEmpty()) {
             box.addView(emptyState("مفيش امتحانات مضافة لسه."));
