@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
     private int taskKindFilter = -1;
     private int taskSortKey = 0;
     /** true = تصاعدي (↑) · false = تنازلي (↓) */
-    private boolean taskSortAsc = true;
+    private boolean taskSortAsc = false;
     /** دليل المستخدم: 0 مغلق · 1 قائمة مواضيع · 2 شرح موضوع */
     private int guideMode = 0;
     private int guideTopic = -1;
@@ -777,6 +777,19 @@ public class MainActivity extends Activity {
             info.addView(range);
         }
         head.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
+        if (scheduleViewMode == 0) {
+            TextView dayPencil = ghostBtn(dayEditMode ? "✓" : "✏️");
+            dayPencil.setTextSize(16);
+            dayPencil.setContentDescription("تعديل اليوم");
+            dayPencil.setOnClickListener(v -> {
+                dayEditMode = !dayEditMode;
+                Toast.makeText(this,
+                        dayEditMode ? "وضع تعديل وترتيب الجلسات مفعّل" : "تم إيقاف وضع التعديل",
+                        Toast.LENGTH_SHORT).show();
+                showTab(0);
+            });
+            head.addView(dayPencil,new LinearLayout.LayoutParams(dp(48),dp(42)));
+        }
         if (scheduleViewMode == 1 || scheduleViewMode == 2) {
             TextView periodPencil = ghostBtn(dayEditMode ? "✓" : "✏️");
             periodPencil.setTextSize(16);
@@ -3084,7 +3097,7 @@ public class MainActivity extends Activity {
         try {
             android.content.SharedPreferences p = getSharedPreferences("myplan_ui", MODE_PRIVATE);
             taskSortKey = p.getInt("taskSortKey", 0);
-            taskSortAsc = p.getBoolean("taskSortAsc", true);
+            taskSortAsc = p.getBoolean("taskSortAsc", false);
         } catch (Exception ignored) {}
     }
 
@@ -4087,9 +4100,17 @@ public class MainActivity extends Activity {
         LinearLayout metrics=new LinearLayout(this);metrics.setGravity(Gravity.CENTER);
         int hours=Math.max(0,planner.doneMinutes())/60;
         int finishedLectures=0, remainingLectures=0;
-        for(Planner.Task tt:planner.tasks){
-            if(tt==null || !tt.isLecture()) continue;
-            if(tt.done) finishedLectures++; else remainingLectures++;
+        // احسب المحاضرات من Sessions الفعلية؛ المهمة الواحدة قد تحتوي أكثر من جلسة.
+        if (planner.sessions != null) {
+            for (Planner.Session ss : planner.sessions) {
+                if (ss == null || ss.taskId == null) continue;
+                Planner.Task tt = null;
+                for (Planner.Task candidate : planner.tasks) {
+                    if (candidate != null && ss.taskId.equals(candidate.id)) { tt = candidate; break; }
+                }
+                if (tt == null || !tt.isLecture()) continue;
+                if (ss.done) finishedLectures++; else remainingLectures++;
+            }
         }
         metrics.addView(statMetricCard("ساعات المذاكرة",String.valueOf(hours)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المحاضرات المكتملة",String.valueOf(finishedLectures)));metrics.addView(space(dp(8)));metrics.addView(statMetricCard("المحاضرات المتبقية",String.valueOf(remainingLectures)));box.addView(metrics);
         box.addView(space(dp(14)));LinearLayout chart=card();TextView ct=muted("آخر 7 أيام");ct.setTextColor(TEXT);ct.setTextSize(16);ct.setTypeface(Typeface.DEFAULT_BOLD);ct.setGravity(Gravity.RIGHT);chart.addView(ct);chart.addView(space(dp(8)));
