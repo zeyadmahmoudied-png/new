@@ -641,7 +641,6 @@ public class MainActivity extends Activity {
     }
 
     private View buildScheduleScreen() {
-        dayDropZones.clear();
         ScrollView sc=new ScrollView(this); sc.setFillViewport(true);
         LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(18),dp(18),dp(18),dp(28)); box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL); sc.addView(box);
