@@ -562,6 +562,35 @@ public final class AnnouncementManager {
         return card;
     }
 
+    private static void handleAction(Activity activity, Dialog dialog, String action, String url) {
+        String a = action == null ? "NONE" : action.trim().toUpperCase();
+        try {
+            switch (a) {
+                case "OPEN_URL":
+                    if (url != null && url.startsWith("https://")) {
+                        activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    }
+                    break;
+                case "OPEN_UPDATE": {
+                    String apk = RemoteControlCache.apkUrl(activity);
+                    if (apk != null && apk.startsWith("https://")) activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(apk)));
+                    else if (url != null && url.startsWith("https://")) activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    break;
+                }
+                case "OPEN_SCREEN":
+                    // Screen routing is intentionally left to the caller; dismiss the announcement safely.
+                    break;
+                case "CLOSE":
+                case "NONE":
+                default:
+                    break;
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (dialog != null) dialog.dismiss();
+        }
+    }
+
     private static TextView makeButton(Context c, String text, int bgColor, boolean filled) {
         TextView b = new TextView(c);
         b.setText(text == null || text.isEmpty() ? "حسنًا" : text);
