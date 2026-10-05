@@ -108,18 +108,6 @@ public class MainActivity extends Activity {
     private Planner.Task draggingTask;
     private float dragAnchorY;
     // Free-drag للجلسات (عرض الأسبوع/اليوم)
-    private Planner.Session draggingSession;
-    private View sessionDragGhost;
-    private TextView sessionDropHint;
-    private String sessionDropDay;
-    private int sessionDropStartMin;
-    private boolean sessionDropValid;
-    private View draggingCardView;
-    private final java.util.HashMap<String, View> dayDropZones = new java.util.HashMap<>();
-    private final android.os.Handler dragLongPressHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private Runnable dragLongPressRunnable;
-    private float dragDownRawX, dragDownRawY;
-    private boolean dragMoved;
     /** false = قائمة عادية · true = بلوكات حسب المادة */
     private boolean tasksGroupBySubject = false;
     /** وضع العرض: 0 نوع · 1 مادة · 2 مدة · 3 أولوية — عرض فقط */
@@ -692,7 +680,6 @@ public class MainActivity extends Activity {
         int halfScreen=Math.max(dp(210), getResources().getDisplayMetrics().widthPixels/2);
         tabsWrap.addView(tabs,new LinearLayout.LayoutParams(halfScreen,dp(44)));
         box.addView(tabsWrap);
-        if (dayEditMode) { TextView editHint = muted("اسحب المحاضرة مباشرة، وعدّي بها بين المحاضرات أو ليوم آخر."); editHint.setTextColor(ACCENT); box.addView(editHint); box.addView(space(dp(8))); }
         box.addView(space(dp(16)));
 
         java.util.ArrayList<Planner.Session> completedVisible = new java.util.ArrayList<>();
@@ -812,32 +799,21 @@ public class MainActivity extends Activity {
             info.addView(range);
         }
         head.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
-        if (scheduleViewMode == 0) {
-            TextView dayPencil = primaryBtn(dayEditMode ? "تم" : "تعديل"); dayPencil.setTextSize(12);
-            dayPencil.setTextSize(20); dayPencil.setGravity(Gravity.CENTER); dayPencil.setBackgroundColor(0x00000000);
-            dayPencil.setContentDescription("تعديل اليوم");
-            dayPencil.setOnClickListener(v -> {
-                dayEditMode = !dayEditMode;
-                Toast.makeText(this,
-                        dayEditMode ? "وضع تعديل وترتيب الجلسات مفعّل" : "تم إيقاف وضع التعديل",
-                        Toast.LENGTH_SHORT).show();
-                refreshScheduleModeView();
-            });
-            head.addView(dayPencil,new LinearLayout.LayoutParams(dp(78),dp(40)));
-        }
-        if (scheduleViewMode == 1 || scheduleViewMode == 2) {
-            TextView periodPencil = primaryBtn(dayEditMode ? "تم" : "تعديل"); periodPencil.setTextSize(12);
-            periodPencil.setTextSize(20); periodPencil.setGravity(Gravity.CENTER); periodPencil.setBackgroundColor(0x00000000);
-            periodPencil.setContentDescription(scheduleViewMode == 1 ? "تعديل الأسبوع" : "تعديل المخصص");
-            periodPencil.setOnClickListener(v -> {
-                dayEditMode = !dayEditMode;
-                Toast.makeText(this,
-                        dayEditMode ? "وضع تعديل وترتيب الجلسات مفعّل" : "تم إيقاف وضع التعديل",
-                        Toast.LENGTH_SHORT).show();
-                refreshScheduleModeView();
-            });
-            head.addView(periodPencil,new LinearLayout.LayoutParams(dp(78),dp(40)));
-        }
+        TextView pencil = new TextView(this);
+        pencil.setText(dayEditMode ? "✓" : "✏️");
+        pencil.setTextSize(dayEditMode ? 21 : 20);
+        pencil.setGravity(Gravity.CENTER);
+        pencil.setTextColor(dayEditMode ? OK : ACCENT);
+        pencil.setContentDescription(dayEditMode ? "إنهاء تعديل الجدول" : "تعديل الجدول");
+        pencil.setPadding(dp(8), 0, dp(8), 0);
+        pencil.setOnClickListener(v -> {
+            dayEditMode = !dayEditMode;
+            Toast.makeText(this,
+                    dayEditMode ? "اضغط على أي محاضرة لنقلها" : "تم حفظ ترتيب الجدول",
+                    Toast.LENGTH_SHORT).show();
+            refreshScheduleModeView();
+        });
+        head.addView(pencil,new LinearLayout.LayoutParams(dp(54),dp(44)));
         box.addView(head);
         box.addView(space(dp(10)));
     }
@@ -993,158 +969,16 @@ public class MainActivity extends Activity {
             }
         }
         box.addView(dayZone);
-        dayDropZones.put(day,dayZone);
-        attachDayDropListener(dayZone,day);
         box.addView(space(dp(14)));
     }
 
-    private void enableSessionFreeDrag(View card, Planner.Session s) {
-        if (s == null || s.done) return;
-        final float[] downX = {0f};
-        final float[] downY = {0f};
-        final boolean[] started = {false};
-        card.setOnTouchListener((v, event) -> {
-            if (!dayEditMode) return false;
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    downX[0] = event.getRawX();
-                    downY[0] = event.getRawY();
-                    started[0] = false;
-                    draggingSession = s;
-                    draggingCardView = v;
-                    return true;
-                case MotionEvent.ACTION_MOVE:
-                    if (!started[0] && (Math.abs(event.getRawX() - downX[0]) > dp(10)
-                            || Math.abs(event.getRawY() - downY[0]) > dp(10))) {
-                        started[0] = true;
-                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                        android.content.ClipData data = android.content.ClipData.newPlainText(
-                                "sessionId", s.id == null ? "" : s.id);
-                        View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
-                        boolean ok = Build.VERSION.SDK_INT >= 24
-                                ? v.startDragAndDrop(data, shadow, s, 0)
-                                : v.startDrag(data, shadow, s, 0);
-                        if (!ok) {
-                            draggingSession = null;
-                            draggingCardView = null;
-                            return false;
-                        }
-                        v.setAlpha(0.35f);
-                    }
-                    return true;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    if (!started[0]) {
-                        draggingSession = null;
-                        draggingCardView = null;
-                        v.performClick();
-                    }
-                    return true;
-            }
-            return true;
-        });
-        card.setOnDragListener((v, event) -> {
-            if (event.getAction() == android.view.DragEvent.ACTION_DRAG_ENDED) {
-                if (draggingCardView != null) draggingCardView.setAlpha(1f);
-                draggingSession = null;
-                draggingCardView = null;
-            }
-            return true;
-        });
-    }
+    
 
-    private void attachDayDropListener(LinearLayout dayZone, String day) {
-        dayZone.setOnDragListener((v, event) -> {
-            if (!dayEditMode) return false;
-            switch (event.getAction()) {
-                case android.view.DragEvent.ACTION_DRAG_STARTED:
-                    return event.getClipDescription() != null
-                            && event.getClipDescription().hasMimeType("text/plain");
-                case android.view.DragEvent.ACTION_DRAG_ENTERED:
-                    sessionDropDay = day;
-                    sessionDropValid = true;
-                    return true;
-                case android.view.DragEvent.ACTION_DRAG_LOCATION:
-                    sessionDropDay = day;
-                    sessionDropStartMin = findDropStartMin(dayZone, event.getY(), draggingSession);
-                    sessionDropValid = true;
-                    return true;
-                case android.view.DragEvent.ACTION_DROP:
-                    if (draggingSession != null) {
-                        int start = findDropStartMin(dayZone, event.getY(), draggingSession);
-                        moveSessionByDrag(draggingSession, day, start);
-                    }
-                    return true;
-                case android.view.DragEvent.ACTION_DRAG_EXITED:
-                    if (day.equals(sessionDropDay)) sessionDropValid = false;
-                    return true;
-                case android.view.DragEvent.ACTION_DRAG_ENDED:
-                    if (draggingCardView != null) draggingCardView.setAlpha(1f);
-                    draggingSession = null;
-                    draggingCardView = null;
-                    sessionDropDay = null;
-                    return true;
-            }
-            return true;
-        });
-    }
+    
 
-    private int findDropStartMin(LinearLayout zone, float y, Planner.Session moving) {
-        int fallback = moving == null ? 9 * 60 : moving.startMin;
-        for (int i = 0; i < zone.getChildCount(); i++) {
-            View child = zone.getChildAt(i);
-            Object tag = child.getTag();
-            if (!(tag instanceof Planner.Session)) continue;
-            Planner.Session target = (Planner.Session) tag;
-            if (target == moving || target.done) continue;
-            if (y < child.getTop() + child.getHeight() / 2f) return target.startMin;
-            fallback = target.startMin + Math.max(1, target.durationMin);
-        }
-        return fallback;
-    }
+    
 
-    private void moveSessionByDrag(Planner.Session moving, String targetDay, int targetStart) {
-        if (moving == null || targetDay == null) return;
-        if (moving.day != null && moving.day.equals(targetDay)
-                && Math.abs(moving.startMin - targetStart) < 2) return;
-        int duration = Math.max(1, moving.durationMin);
-        int oldStart = moving.startMin;
-        String oldDay = moving.day;
-        Planner.Session displaced = null;
-        for (Planner.Session x : new ArrayList<>(planner.sessions)) {
-            if (x == null || x == moving || x.done) continue;
-            if (!targetDay.equals(x.day)) continue;
-            int end = x.endMin <= x.startMin ? x.endMin + 1440 : x.endMin;
-            if (targetStart < end && targetStart + duration > x.startMin) {
-                displaced = x;
-                break;
-            }
-        }
-        if (displaced != null) {
-            int ds = displaced.startMin;
-            int de = displaced.endMin;
-            String dd = displaced.day;
-            displaced.day = oldDay;
-            displaced.startMin = oldStart;
-            displaced.endMin = de <= ds ? (oldStart + displaced.durationMin) % 1440 : oldStart + displaced.durationMin;
-            if (displaced.endMin == 0 && displaced.durationMin > 0) displaced.endMin = 1440;
-            moving.day = dd;
-            moving.startMin = ds;
-            moving.endMin = (ds + duration) % 1440;
-            if (moving.endMin == 0) moving.endMin = 1440;
-        } else {
-            moving.day = targetDay;
-            moving.startMin = Math.max(0, Math.min(1439, targetStart));
-            moving.endMin = (moving.startMin + duration) % 1440;
-            if (moving.endMin == 0 && moving.startMin + duration > 0) moving.endMin = 1440;
-            moving.missed = false;
-        }
-        planner.save();
-        if (content != null) {
-            content.removeAllViews();
-            content.addView(buildScheduleScreen());
-        }
-    }
+    
 
     /** simple horizontal scroll container */
     private static class HorizontalScrollWrap extends android.widget.HorizontalScrollView {
@@ -1201,10 +1035,7 @@ public class MainActivity extends Activity {
     private View sessionCard(Planner.Session s) {
         LinearLayout card = card();
         card.setOrientation(LinearLayout.VERTICAL);
-
-        // ملخص مضغوط: اسم · مادة · وقت
-        LinearLayout summary = new LinearLayout(this);
-        summary.setOrientation(LinearLayout.VERTICAL);
+        card.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
         LinearLayout titleRow = new LinearLayout(this);
         titleRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -1223,31 +1054,17 @@ public class MainActivity extends Activity {
         name.setTextColor(s.done ? OK : TEXT);
         name.setTextSize(15.5f);
         name.setTypeface(Typeface.DEFAULT_BOLD);
-        if (s.done) name.setPaintFlags(name.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
         titleRow.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        if (s.done) {
-            TextView done = new TextView(this);
-            done.setText("تم ✓");
-            done.setTextColor(OK);
-            done.setTextSize(12);            done.setTypeface(Typeface.DEFAULT_BOLD);
-            titleRow.addView(done);
-        }
-        summary.addView(titleRow);
+        TextView time = muted(s.timeLabel() + "  ·  " + s.durationMin + " د");
+        time.setTextSize(12.5f);
+        titleRow.addView(time);
+        card.addView(titleRow);
 
-        String subj = (s.subject == null || s.subject.isEmpty()) ? "—" : s.subject;
-        TextView subLine = muted(subj + "  ·  " + s.durationMin + " د");
+        TextView subLine = muted((s.subject == null || s.subject.isEmpty() ? "—" : s.subject));
         subLine.setTextSize(13);
-        summary.addView(subLine);
-        TextView timeLine = new TextView(this);
-        timeLine.setText(s.timeLabel());
-        timeLine.setTextColor(MUTED);
-        timeLine.setTextSize(13);
-        timeLine.setTypeface(Typeface.DEFAULT_BOLD);
-        summary.addView(timeLine);
-        card.addView(summary);
+        card.addView(subLine);
 
-        // حالة بصرية حسب حالة الجلسة
         GradientDrawable cardBg = new GradientDrawable();
         cardBg.setCornerRadius(dp(RADIUS));
         if (s.done) {
@@ -1260,76 +1077,133 @@ public class MainActivity extends Activity {
             if (current) {
                 cardBg.setColor(0xFF152038);
                 cardBg.setStroke(dp(2), ACCENT);
-            } else {
-                cardBg.setColor(CARD);
-            }
+            } else cardBg.setColor(CARD);
         }
         card.setBackground(cardBg);
 
-        // تفاصيل تُوسَّع عند الضغط (نفس البطاقة)
-        LinearLayout details = new LinearLayout(this);
-        details.setOrientation(LinearLayout.VERTICAL);
-        details.setVisibility(View.GONE);
-        details.setPadding(0, dp(10), 0, 0);
-
-        String pri = Planner.PRIORITY_LABELS[Math.max(0, Math.min(2, s.priority))];
-        String type = s.backlog ? "قديمة" : "جديدة";
-        String flags = "";
-        if (s.userPinned) flags += " · مثبت";
-        if (s.missed && !s.done) flags += " · فائتة";
-        details.addView(muted(s.durationMin + " د · جلسة " + s.sessionIndex + "/" + s.sessionTotal
-                + " · " + pri + " · " + type + flags));
-
-        if (!s.done) {
-            LinearLayout actions = new LinearLayout(this);
-            actions.setOrientation(LinearLayout.HORIZONTAL);
-            actions.setPadding(0, dp(8), 0, 0);
-            TextView start = link("ابدأ");
-            start.setOnClickListener(v -> openTimer(s));
-            actions.addView(start);
-            actions.addView(space(dp(12)));
-            TextView mark = link("تم الإنجاز");
-            mark.setOnClickListener(v -> finishSessionWithChoice(s));
-            actions.addView(mark);
-            actions.addView(space(dp(12)));
-            // «نقل» أُزيل من الواجهة — التعديل عبر قلم اليوم (تأجيل بالدقائق)
-            TextView postpone = link("تأجيل");
-            postpone.setOnClickListener(v -> showPostponeSessionDialog(s));
-            actions.addView(postpone);
-            actions.addView(space(dp(12)));
-            TextView dur = link("المدة");
-            dur.setOnClickListener(v -> showAdjustDurationDialog(s));
-            actions.addView(dur);
-            if (s.missed) {
-                actions.addView(space(dp(14)));
-                TextView rec = link("إعادة جدولة");
-                rec.setOnClickListener(v -> showMissedSessionChoices(s));
-                actions.addView(rec);
+        if (dayEditMode && !s.done) {
+            TextView editHint = new TextView(this);
+            editHint.setText("✏️  اضغط هنا لنقل المحاضرة");
+            editHint.setTextColor(ACCENT);
+            editHint.setTextSize(12);
+            editHint.setGravity(Gravity.RIGHT);
+            editHint.setPadding(0, dp(10), 0, 0);
+            card.addView(editHint);
+            card.setOnClickListener(v -> showMoveSessionDialog(s));
+        } else {
+            LinearLayout details = new LinearLayout(this);
+            details.setOrientation(LinearLayout.VERTICAL);
+            details.setVisibility(View.GONE);
+            details.setPadding(0, dp(10), 0, 0);
+            String pri = Planner.PRIORITY_LABELS[Math.max(0, Math.min(2, s.priority))];
+            String type = s.backlog ? "قديمة" : "جديدة";
+            String flags = "";
+            if (s.userPinned) flags += " · مثبت";
+            if (s.missed && !s.done) flags += " · فائتة";
+            details.addView(muted(s.durationMin + " د · جلسة " + s.sessionIndex + "/" + s.sessionTotal
+                    + " · " + pri + " · " + type + flags));
+            if (!s.done) {
+                LinearLayout actions = new LinearLayout(this);
+                actions.setOrientation(LinearLayout.HORIZONTAL);
+                actions.setPadding(0, dp(8), 0, 0);
+                TextView start = link("ابدأ");
+                start.setOnClickListener(v -> openTimer(s));
+                actions.addView(start); actions.addView(space(dp(12)));
+                TextView mark = link("تم الإنجاز");
+                mark.setOnClickListener(v -> finishSessionWithChoice(s));
+                actions.addView(mark); actions.addView(space(dp(12)));
+                TextView postpone = link("تأجيل");
+                postpone.setOnClickListener(v -> showPostponeSessionDialog(s));
+                actions.addView(postpone); actions.addView(space(dp(12)));
+                TextView dur = link("المدة");
+                dur.setOnClickListener(v -> showAdjustDurationDialog(s));
+                actions.addView(dur);
+                if (s.missed) {
+                    actions.addView(space(dp(14)));
+                    TextView rec = link("إعادة جدولة");
+                    rec.setOnClickListener(v -> showMissedSessionChoices(s));
+                    actions.addView(rec);
+                }
+                details.addView(actions);
             }
-            details.addView(actions);
+            final boolean[] open = {false};
+            View.OnClickListener toggle = v -> {
+                open[0] = !open[0];
+                details.setVisibility(open[0] ? View.VISIBLE : View.GONE);
+            };
+            card.setOnClickListener(toggle);
         }
-        card.addView(details);
 
-        final boolean[] open = {false};
-        View.OnClickListener toggleOrEdit = v -> {
-            if (dayEditMode && !s.done) {
-                return;
-            }
-            open[0] = !open[0];
-            details.setVisibility(open[0] ? View.VISIBLE : View.GONE);
-        };
-        summary.setOnClickListener(toggleOrEdit);
-        card.setOnClickListener(toggleOrEdit);
-
-        // Free Drag: ضغط مطوّل ثم سحب بالإصبع (خاصة الأسبوع)
-        if (!s.done) {
-            enableSessionFreeDrag(card, s);
-        }
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.bottomMargin = dp(8);
         card.setLayoutParams(lp);
         return card;
+    }
+
+    private void showMoveSessionDialog(Planner.Session s) {
+        if (s == null || s.done) return;
+        final String[] days = new String[Math.max(1, planner.settings.planDays)];
+        Calendar c = Calendar.getInstance();
+        c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0);
+        int base = -1;
+        for (int i = 0; i < days.length; i++) {
+            Calendar x = (Calendar)c.clone(); x.add(Calendar.DAY_OF_YEAR, i);
+            days[i] = String.format(Locale.US, "%04d-%02d-%02d", x.get(Calendar.YEAR), x.get(Calendar.MONTH)+1, x.get(Calendar.DAY_OF_MONTH));
+            if (days[i].equals(s.day)) base = i;
+        }
+        final String[] labels = new String[days.length];
+        for (int i=0;i<days.length;i++) labels[i] = Planner.dayLabelAr(days[i]) + "  " + days[i];
+
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        form.setPadding(dp(18), dp(8), dp(18), dp(4));
+
+        TextView dayLabel = label("اليوم");
+        dayLabel.setTextColor(ACCENT);
+        form.addView(dayLabel);
+        NumberPicker dayPicker = new NumberPicker(this);
+        dayPicker.setMinValue(0); dayPicker.setMaxValue(labels.length-1);
+        dayPicker.setDisplayedValues(labels);
+        dayPicker.setValue(base < 0 ? 0 : base);
+        form.addView(dayPicker);
+
+        TextView hourLabel = label("الساعة");
+        hourLabel.setTextColor(ACCENT);
+        form.addView(hourLabel);
+        NumberPicker hour = new NumberPicker(this);
+        hour.setMinValue(0); hour.setMaxValue(23);
+        hour.setValue(Math.max(0, Math.min(23, s.startMin / 60)));
+        form.addView(hour);
+
+        TextView minLabel = label("الدقائق");
+        minLabel.setTextColor(ACCENT);
+        form.addView(minLabel);
+        NumberPicker minute = new NumberPicker(this);
+        minute.setMinValue(0); minute.setMaxValue(59);
+        minute.setValue(Math.max(0, Math.min(59, s.startMin % 60)));
+        form.addView(minute);
+
+        myDialog().setTitle("✏️ تعديل مكان المحاضرة")
+                .setView(form)
+                .setPositiveButton("حفظ", (d,w) -> {
+                    String oldDay = s.day;
+                    int oldStart = s.startMin;
+                    int newStart = hour.getValue()*60 + minute.getValue();
+                    s.day = days[dayPicker.getValue()];
+                    s.startMin = newStart;
+                    s.endMin = newStart + Math.max(1, s.durationMin);
+                    if (s.endMin >= 1440) s.endMin = 1440;
+                    s.missed = false;
+                    planner.save();
+                    SessionAlarmScheduler.resync(this, planner);
+                    dayEditMode = false;
+                    Toast.makeText(this, "تم تعديل مكان المحاضرة", Toast.LENGTH_SHORT).show();
+                    showTab(0);
+                })
+                .setNegativeButton("إلغاء", null)
+                .show();
     }
 
 
@@ -5284,15 +5158,6 @@ public class MainActivity extends Activity {
                             Math.max(0, Math.min(100, a.prepLevel)),
                             Math.max(0, Math.min(100, b.prepLevel)));
                     if (p != 0) return p;
-                } else if (examSortMode == 2) {
-                    int daDays = examDaysUntil(a.day);
-                    int dbDays = examDaysUntil(b.day);
-                    int aScore = (100 - Math.max(0, Math.min(100, a.prepLevel))) * 10 / (daDays + 1)
-                            + Math.max(0, a.neededMin / 60);
-                    int bScore = (100 - Math.max(0, Math.min(100, b.prepLevel))) * 10 / (dbDays + 1)
-                            + Math.max(0, b.neededMin / 60);
-                    if (aScore != bScore) return Integer.compare(bScore, aScore);
-                }
                 long da = Long.MAX_VALUE, db = Long.MAX_VALUE;
                 try { da = Planner.dayCal(a.day).getTimeInMillis(); } catch(Exception ignored) {}
                 try { db = Planner.dayCal(b.day).getTimeInMillis(); } catch(Exception ignored) {}
@@ -5400,7 +5265,7 @@ public class MainActivity extends Activity {
     }
 
     private void showExamViewChoices(TextView anchor) {
-        String[] choices = {"حسب الجدول", "حسب مستوى التجهيز", "منطق التدريب"};
+        String[] choices = {"حسب الجدول", "حسب مستوى التجهيز"};
         int selected = examSortMode;
         showFloatingChoices(anchor, choices, selected, idx -> {
             examSortMode = idx;
