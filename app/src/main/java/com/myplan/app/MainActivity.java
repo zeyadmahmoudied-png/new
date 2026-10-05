@@ -1161,7 +1161,6 @@ public class MainActivity extends Activity {
         final boolean[] open = {false};
         View.OnClickListener toggleOrEdit = v -> {
             if (dayEditMode && !s.done) {
-                showMoveSessionDialog(s);
                 return;
             }
             open[0] = !open[0];
