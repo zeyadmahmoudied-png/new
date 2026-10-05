@@ -5285,8 +5285,8 @@ public class MainActivity extends Activity {
                             Math.max(0, Math.min(100, b.prepLevel)));
                     if (p != 0) return p;
                 } else if (examSortMode == 2) {
-                    int daDays = Math.max(0, daysUntil(a.day));
-                    int dbDays = Math.max(0, daysUntil(b.day));
+                    int daDays = examDaysUntil(a.day);
+                    int dbDays = examDaysUntil(b.day);
                     int aScore = (100 - Math.max(0, Math.min(100, a.prepLevel))) * 10 / (daDays + 1)
                             + Math.max(0, a.neededMin / 60);
                     int bScore = (100 - Math.max(0, Math.min(100, b.prepLevel))) * 10 / (dbDays + 1)
@@ -5453,6 +5453,19 @@ public class MainActivity extends Activity {
         subject.setOnClickListener(v->pickSubject(subjectHold[0],name0->{if(!name0.equals(subjectHold[0])){lastLecId[0]="";lastLecTv.setText("بدون تحديد");}subjectHold[0]=name0;subject.setText(name0);subject.setTextColor(ACCENT);}));
         ScrollView sv=new ScrollView(this);sv.addView(form);
         AlertDialog dialog=myDialog().setTitle(existing==null?"امتحان جديد":"تعديل امتحان").setView(sv).setPositiveButton("حفظ",(d,w)->{String sub=subjectHold[0]==null?"":subjectHold[0].trim();if(sub.isEmpty()){Toast.makeText(this,"اختار المادة",Toast.LENGTH_SHORT).show();return;}if(day[0].isEmpty()){Toast.makeText(this,"اختار التاريخ",Toast.LENGTH_SHORT).show();return;}Planner.Exam e=existing!=null?existing:new Planner.Exam();e.subject=sub;e.title=title.getText().toString().trim();e.topics=topics.getText().toString().trim();e.day=day[0];e.prepLevel=prep[0];e.importance=2;e.lastLectureTaskId=lastLecId[0]==null?"":lastLecId[0];if(existing==null)planner.exams.add(e);planner.save();showTab(3);}).setNegativeButton("إلغاء",null).show();styleBlueDialog(dialog);
+    }
+
+    private int examDaysUntil(String day) {
+        if (day == null || day.trim().isEmpty()) return 9999;
+        try {
+            java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
+            f.setLenient(false);
+            long a = f.parse(Planner.todayStr()).getTime();
+            long b = f.parse(day).getTime();
+            return Math.max(0, (int)((b - a) / (24L * 60L * 60L * 1000L)));
+        } catch (Exception e) {
+            return 9999;
+        }
     }
 
     private void styleBlueDialog(AlertDialog dialog) {
