@@ -5158,6 +5158,7 @@ public class MainActivity extends Activity {
                             Math.max(0, Math.min(100, a.prepLevel)),
                             Math.max(0, Math.min(100, b.prepLevel)));
                     if (p != 0) return p;
+                }
                 long da = Long.MAX_VALUE, db = Long.MAX_VALUE;
                 try { da = Planner.dayCal(a.day).getTimeInMillis(); } catch(Exception ignored) {}
                 try { db = Planner.dayCal(b.day).getTimeInMillis(); } catch(Exception ignored) {}
