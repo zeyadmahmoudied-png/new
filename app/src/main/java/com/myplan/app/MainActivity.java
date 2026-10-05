@@ -982,8 +982,8 @@ public class MainActivity extends Activity {
                 if(showMainCard){
                     // الجلسة الحالية تُعرض مرة واحدة في الكارت الكبير؛ الباقي يظهر تحت «لاحقًا».
                     int nowM=Planner.nowMinOfDay();
-                    boolean current=!s.done&&isToday&&s.startMin<=nowM&&nowM<(s.endMin<=s.startMin?s.endMin+24*60:s.endMin);
-                    if(current) continue;
+                    boolean currentSelected = currentS != null && currentS.id != null && currentS.id.equals(s.id);
+                    if(currentSelected) continue;
                 }
                 dayZone.addView(sessionCard(s));
             }
@@ -1160,7 +1160,10 @@ public class MainActivity extends Activity {
 
         final boolean[] open = {false};
         View.OnClickListener toggleOrEdit = v -> {
-            if (dayEditMode && !s.done) return;
+            if (dayEditMode && !s.done) {
+                showMoveSessionDialog(s);
+                return;
+            }
             open[0] = !open[0];
             details.setVisibility(open[0] ? View.VISIBLE : View.GONE);
         };
@@ -1184,6 +1187,50 @@ public class MainActivity extends Activity {
      * Long-press يبدأ السحب؛ النظام يحرّك الظل مع الإصبع؛
      * مناطق الأيام تستقبل DROP وتتحقق من الصلاحية.
      */
+    /** تعديل مكان الجلسة بطريقة مباشرة وموثوقة — بدون الاعتماد على Android Drag & Drop. */
+    private void showMoveSessionDialog(Planner.Session s) {
+        if (s == null || s.done) return;
+        final String[] days = {"السبت","الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"};
+        final String[] dayValues = {"السبت","الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"};
+        final int[] selectedDay = {0};
+        if (s.day != null) {
+            for (int i = 0; i < dayValues.length; i++) {
+                if (dayValues[i].equals(s.day) || Planner.dayLabelAr(s.day).equals(dayValues[i])) {
+                    selectedDay[0] = i; break;
+                }
+            }
+        }
+        myDialog().setTitle("تعديل مكان المحاضرة")
+                .setSingleChoiceItems(days, selectedDay[0], (d, which) -> selectedDay[0] = which)
+                .setPositiveButton("اختيار الوقت", (d, w) -> {
+                    android.app.TimePickerDialog tp = new android.app.TimePickerDialog(
+                            this,
+                            (view, hour, minute) -> {
+                                int preferred = hour * 60 + minute;
+                                String day = dayValues[selectedDay[0]];
+                                int nearest = planner.nearestValidStart(s.id, day, preferred);
+                                if (nearest < 0) {
+                                    Toast.makeText(this, "الوقت ده غير متاح للمحاضرة", Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+                                String err = planner.moveSessionManual(s.id, day, nearest);
+                                if (err != null) {
+                                    Toast.makeText(this, err, Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+                                SessionAlarmScheduler.resync(this, planner);
+                                Toast.makeText(this, "تم تغيير مكان المحاضرة ✓", Toast.LENGTH_SHORT).show();
+                                refreshScheduleModeView();
+                            },
+                            Math.max(0, Math.min(23, s.startMin / 60)),
+                            Math.max(0, Math.min(59, s.startMin % 60)),
+                            true);
+                    tp.show();
+                })
+                .setNegativeButton("إلغاء", null)
+                .show();
+    }
+
     private void enableSessionFreeDrag(View card, Planner.Session s) {
         if (s == null || s.done) return;
         card.setLongClickable(false);
@@ -5281,11 +5328,21 @@ public class MainActivity extends Activity {
         box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         sc.addView(box);
 
+        LinearLayout examHeader = new LinearLayout(this);
+        examHeader.setOrientation(LinearLayout.HORIZONTAL);
+        examHeader.setGravity(Gravity.CENTER_VERTICAL);
+        examHeader.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         TextView h = title("الامتحانات");
         h.setTextSize(34);
         h.setTypeface(Typeface.DEFAULT_BOLD);
         h.setGravity(Gravity.RIGHT);
-        box.addView(h);
+        examHeader.addView(h, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView viewBtn = chip("عرض", false);
+        viewBtn.setTextSize(12);
+        viewBtn.setPadding(dp(12), dp(6), dp(12), dp(6));
+        viewBtn.setOnClickListener(v -> showExamViewChoices(viewBtn));
+        examHeader.addView(viewBtn, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38)));
+        box.addView(examHeader);
         box.addView(space(dp(8)));
 
         if (planner.exams.isEmpty()) {
@@ -5414,7 +5471,7 @@ public class MainActivity extends Activity {
     }
 
     private void showExamViewChoices(TextView anchor) {
-        String[] choices = {"الأقرب", "التجهيز"};
+        String[] choices = {"حسب الجدول", "حسب مستوى التجهيز"};
         int selected = examSortMode;
         showFloatingChoices(anchor, choices, selected, idx -> {
             examSortMode = idx;
