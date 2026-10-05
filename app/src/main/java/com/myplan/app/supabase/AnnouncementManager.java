@@ -585,6 +585,16 @@ public final class AnnouncementManager {
         return b;
     }
 
+    private static void runAction(Activity activity, Dialog dialog, String action, String url) {
+        if (dialog != null && (action == null || action.trim().isEmpty()
+                || "CLOSE".equalsIgnoreCase(action) || "NONE".equalsIgnoreCase(action))) {
+            dialog.dismiss();
+            return;
+        }
+        runAction(activity, action, url);
+        if (dialog != null) dialog.dismiss();
+    }
+
     private static void runAction(Activity activity, String action, String url) {
         String a = action == null ? "NONE" : action.trim().toUpperCase();
         try {
