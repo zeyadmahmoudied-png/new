@@ -1115,7 +1115,10 @@ public class MainActivity extends Activity {
             moving.missed = false;
         }
         planner.save();
-        renderSchedule();
+        if (content != null) {
+            content.removeAllViews();
+            content.addView(buildScheduleScreen());
+        }
     }
 
     /** simple horizontal scroll container */
@@ -1130,7 +1133,6 @@ public class MainActivity extends Activity {
 
     private View prayerCard(int[] block) {
         LinearLayout card = card();
-        card.setTag(s);
         card.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(0xFF1A2438);
