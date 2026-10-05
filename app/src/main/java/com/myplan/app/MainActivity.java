@@ -998,6 +998,126 @@ public class MainActivity extends Activity {
         box.addView(space(dp(14)));
     }
 
+    private void enableSessionFreeDrag(View card, Planner.Session s) {
+        if (s == null || s.done) return;
+        card.setOnLongClickListener(v -> {
+            if (!dayEditMode) return false;
+            draggingSession = s;
+            draggingCardView = v;
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+            android.content.ClipData data = android.content.ClipData.newPlainText("sessionId", s.id == null ? "" : s.id);
+            View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
+            boolean ok = Build.VERSION.SDK_INT >= 24
+                    ? v.startDragAndDrop(data, shadow, s, 0)
+                    : v.startDrag(data, shadow, s, 0);
+            if (!ok) {
+                draggingSession = null;
+                draggingCardView = null;
+            } else {
+                v.setAlpha(0.35f);
+            }
+            return true;
+        });
+        card.setOnDragListener((v, event) -> {
+            if (event.getAction() == android.view.DragEvent.ACTION_DRAG_ENDED) {
+                if (draggingCardView != null) draggingCardView.setAlpha(1f);
+                draggingSession = null;
+                draggingCardView = null;
+            }
+            return true;
+        });
+    }
+
+    private void attachDayDropListener(LinearLayout dayZone, String day) {
+        dayZone.setOnDragListener((v, event) -> {
+            if (!dayEditMode) return false;
+            switch (event.getAction()) {
+                case android.view.DragEvent.ACTION_DRAG_STARTED:
+                    return event.getClipDescription() != null
+                            && event.getClipDescription().hasMimeType("text/plain");
+                case android.view.DragEvent.ACTION_DRAG_ENTERED:
+                    sessionDropDay = day;
+                    sessionDropValid = true;
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_LOCATION:
+                    sessionDropDay = day;
+                    sessionDropStartMin = findDropStartMin(dayZone, event.getY(), draggingSession);
+                    sessionDropValid = true;
+                    return true;
+                case android.view.DragEvent.ACTION_DROP:
+                    if (draggingSession != null) {
+                        int start = findDropStartMin(dayZone, event.getY(), draggingSession);
+                        moveSessionByDrag(draggingSession, day, start);
+                    }
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_EXITED:
+                    if (day.equals(sessionDropDay)) sessionDropValid = false;
+                    return true;
+                case android.view.DragEvent.ACTION_DRAG_ENDED:
+                    if (draggingCardView != null) draggingCardView.setAlpha(1f);
+                    draggingSession = null;
+                    draggingCardView = null;
+                    sessionDropDay = null;
+                    return true;
+            }
+            return true;
+        });
+    }
+
+    private int findDropStartMin(LinearLayout zone, float y, Planner.Session moving) {
+        int fallback = moving == null ? 9 * 60 : moving.startMin;
+        for (int i = 0; i < zone.getChildCount(); i++) {
+            View child = zone.getChildAt(i);
+            Object tag = child.getTag();
+            if (!(tag instanceof Planner.Session)) continue;
+            Planner.Session target = (Planner.Session) tag;
+            if (target == moving || target.done) continue;
+            if (y < child.getTop() + child.getHeight() / 2f) return target.startMin;
+            fallback = target.startMin + Math.max(1, target.durationMin);
+        }
+        return fallback;
+    }
+
+    private void moveSessionByDrag(Planner.Session moving, String targetDay, int targetStart) {
+        if (moving == null || targetDay == null) return;
+        if (moving.day != null && moving.day.equals(targetDay)
+                && Math.abs(moving.startMin - targetStart) < 2) return;
+        int duration = Math.max(1, moving.durationMin);
+        int oldStart = moving.startMin;
+        String oldDay = moving.day;
+        Planner.Session displaced = null;
+        for (Planner.Session x : new ArrayList<>(planner.sessions)) {
+            if (x == null || x == moving || x.done) continue;
+            if (!targetDay.equals(x.day)) continue;
+            int end = x.endMin <= x.startMin ? x.endMin + 1440 : x.endMin;
+            if (targetStart < end && targetStart + duration > x.startMin) {
+                displaced = x;
+                break;
+            }
+        }
+        if (displaced != null) {
+            int ds = displaced.startMin;
+            int de = displaced.endMin;
+            String dd = displaced.day;
+            displaced.day = oldDay;
+            displaced.startMin = oldStart;
+            displaced.endMin = de <= ds ? (oldStart + displaced.durationMin) % 1440 : oldStart + displaced.durationMin;
+            if (displaced.endMin == 0 && displaced.durationMin > 0) displaced.endMin = 1440;
+            moving.day = dd;
+            moving.startMin = ds;
+            moving.endMin = (ds + duration) % 1440;
+            if (moving.endMin == 0) moving.endMin = 1440;
+        } else {
+            moving.day = targetDay;
+            moving.startMin = Math.max(0, Math.min(1439, targetStart));
+            moving.endMin = (moving.startMin + duration) % 1440;
+            if (moving.endMin == 0 && moving.startMin + duration > 0) moving.endMin = 1440;
+            moving.missed = false;
+        }
+        planner.save();
+        renderSchedule();
+    }
+
     /** simple horizontal scroll container */
     private static class HorizontalScrollWrap extends android.widget.HorizontalScrollView {
         HorizontalScrollWrap(android.content.Context ctx) {
@@ -1010,6 +1130,7 @@ public class MainActivity extends Activity {
 
     private View prayerCard(int[] block) {
         LinearLayout card = card();
+        card.setTag(s);
         card.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(0xFF1A2438);
