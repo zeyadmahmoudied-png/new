@@ -46,12 +46,16 @@ public final class AnnouncementManager {
     private static boolean showing;
 
     public enum AnnType {
-        NEW_FEATURE("new_feature", "🎉", "ميزة جديدة", 0xFF7C4DFF),
+        POLICY("policy", "⚖️", "سياسة", 0xFF5C6BC0),
+        UPDATE("update", "🎊", "تحديث", 0xFF26A69A),
+        NEW_FEATURE("new_feature", "✨", "ميزة جديدة", 0xFF7C4DFF),
+        SPORTS("sports", "🏆", "تحدي رياضي", 0xFF42A5F5),
+        NEWS("news", "📰", "خبر", 0xFF78909C),
+        OFFER("offer", "🎁", "عرض", 0xFFFFB300),
         GENERAL("general", "📢", "إعلان عام", 0xFF42A5F5),
         PREMIUM("premium", "⭐", "Premium", 0xFFFFB300),
         MAINTENANCE("maintenance", "🔧", "صيانة", 0xFF78909C),
-        WARNING("warning", "⚠️", "تحذير", 0xFFEF5350),
-        UPDATE("update", "🔄", "تحديث", 0xFF26A69A);
+        WARNING("warning", "⚠️", "تحذير", 0xFFEF5350);
 
         public final String key;
         public final String emoji;
@@ -59,27 +63,23 @@ public final class AnnouncementManager {
         public final int accent;
 
         AnnType(String key, String emoji, String labelAr, int accent) {
-            this.key = key;
-            this.emoji = emoji;
-            this.labelAr = labelAr;
-            this.accent = accent;
+            this.key = key; this.emoji = emoji; this.labelAr = labelAr; this.accent = accent;
         }
 
         public static AnnType from(String raw) {
             if (raw == null) return GENERAL;
             String s = raw.trim().toLowerCase().replace('-', '_').replace(' ', '_');
-            if (s.contains("new_feature") || s.equals("feature") || s.equals("newfeature"))
-                return NEW_FEATURE;
+            if (s.contains("policy") || s.contains("privacy") || s.contains("terms")) return POLICY;
+            if (s.contains("new_feature") || s.equals("feature") || s.equals("newfeature")) return NEW_FEATURE;
+            if (s.contains("sport") || s.contains("challenge")) return SPORTS;
+            if (s.contains("news") || s.contains("article")) return NEWS;
+            if (s.contains("offer") || s.contains("sale") || s.contains("promo")) return OFFER;
             if (s.contains("premium")) return PREMIUM;
             if (s.contains("maintenance")) return MAINTENANCE;
-            if (s.contains("warn") || s.contains("alert") || s.contains("important"))
-                return WARNING;
+            if (s.contains("warn") || s.contains("alert") || s.contains("important")) return WARNING;
             if (s.contains("update") || s.equals("force_update")) return UPDATE;
-            if (s.equals("announcement") || s.equals("popup") || s.equals("general"))
-                return GENERAL;
-            for (AnnType t : values()) {
-                if (t.key.equals(s)) return t;
-            }
+            if (s.equals("announcement") || s.equals("popup") || s.equals("general")) return GENERAL;
+            for (AnnType t : values()) if (t.key.equals(s)) return t;
             return GENERAL;
         }
     }
@@ -298,10 +298,14 @@ public final class AnnouncementManager {
 
         if (it.primaryButtonText.isEmpty()) {
             switch (it.type) {
+                case POLICY: it.primaryButtonText = "قراءة السياسة"; break;
+                case UPDATE: it.primaryButtonText = "عرض التحديث"; break;
                 case NEW_FEATURE: it.primaryButtonText = "اكتشف الميزة"; break;
+                case SPORTS: it.primaryButtonText = "ابدأ التحدي"; break;
+                case NEWS: it.primaryButtonText = "اقرأ الخبر"; break;
+                case OFFER: it.primaryButtonText = "شاهد العرض"; break;
                 case PREMIUM: it.primaryButtonText = "معرفة المزيد"; break;
                 case WARNING: it.primaryButtonText = "فهمت"; break;
-                case UPDATE: it.primaryButtonText = "تحديث الآن"; break;
                 default: it.primaryButtonText = "حسنًا"; break;
             }
         }
@@ -411,109 +415,150 @@ public final class AnnouncementManager {
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        int pad = dp(activity, 22);
+        int pad = dp(activity, 20);
         card.setPadding(pad, pad, pad, dp(activity, 16));
 
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0xFF1A2332);
-        bg.setCornerRadius(dp(activity, 18));
-        bg.setStroke(dp(activity, 1), 0x33FFFFFF);
+        bg.setColor(0xFF151C29);
+        bg.setCornerRadius(dp(activity, 20));
+        bg.setStroke(dp(activity, 1), (it.type.accent & 0x66FFFFFF));
         card.setBackground(bg);
-        card.setElevation(dp(activity, 12));
+        card.setElevation(dp(activity, 14));
 
-        View bar = new View(activity);
-        GradientDrawable barBg = new GradientDrawable();
-        barBg.setColor(it.type.accent);
-        barBg.setCornerRadius(dp(activity, 3));
-        bar.setBackground(barBg);
-        LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(activity, 4));
-        barLp.bottomMargin = dp(activity, 16);
-        card.addView(bar, barLp);
-
-        TextView typeChip = new TextView(activity);
-        typeChip.setText(it.type.emoji + "  " + it.type.labelAr);
-        typeChip.setTextColor(it.type.accent);
-        typeChip.setTextSize(12);
-        typeChip.setTypeface(Typeface.DEFAULT_BOLD);
-        GradientDrawable chipBg = new GradientDrawable();
-        chipBg.setColor((it.type.accent & 0x00FFFFFF) | 0x22000000);
-        chipBg.setCornerRadius(dp(activity, 20));
-        typeChip.setBackground(chipBg);
-        typeChip.setPadding(dp(activity, 12), dp(activity, 6), dp(activity, 12), dp(activity, 6));
-        LinearLayout.LayoutParams chipLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        chipLp.bottomMargin = dp(activity, 14);
-        card.addView(typeChip, chipLp);
+        // هوية بصرية مختلفة لكل نوع، مع الحفاظ على ألوان My Plan.
+        LinearLayout hero = new LinearLayout(activity);
+        hero.setOrientation(LinearLayout.HORIZONTAL);
+        hero.setGravity(Gravity.CENTER_VERTICAL);
+        hero.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        GradientDrawable heroBg = new GradientDrawable();
+        int heroColor;
+        switch (it.type) {
+            case POLICY: heroColor = 0x335C6BC0; break;
+            case UPDATE: heroColor = 0x3326A69A; break;
+            case NEW_FEATURE: heroColor = 0x337C4DFF; break;
+            case SPORTS: heroColor = 0x3342A5F5; break;
+            case NEWS: heroColor = 0x3378909C; break;
+            case OFFER: heroColor = 0x33FFB300; break;
+            default: heroColor = 0x334B6DFF; break;
+        }
+        heroBg.setColor(heroColor);
+        heroBg.setCornerRadius(dp(activity, 16));
+        hero.setBackground(heroBg);
+        hero.setPadding(dp(activity, 14), dp(activity, 12), dp(activity, 14), dp(activity, 12));
 
         TextView icon = new TextView(activity);
-        icon.setText(it.icon.isEmpty() ? it.type.emoji : it.icon);
-        icon.setTextSize(36);
+        String visual = it.icon == null || it.icon.isEmpty() ? it.type.emoji : it.icon;
+        icon.setText(visual);
+        icon.setTextSize(it.type == AnnType.SPORTS ? 30 : 28);
         icon.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        iconLp.bottomMargin = dp(activity, 10);
-        card.addView(icon, iconLp);
+        icon.setTypeface(Typeface.DEFAULT_BOLD);
+        GradientDrawable iconBg = new GradientDrawable();
+        iconBg.setColor(it.type.accent & 0x44FFFFFF);
+        iconBg.setShape(GradientDrawable.OVAL);
+        icon.setBackground(iconBg);
+        hero.addView(icon, new LinearLayout.LayoutParams(dp(activity, 58), dp(activity, 58)));
 
+        LinearLayout heroText = new LinearLayout(activity);
+        heroText.setOrientation(LinearLayout.VERTICAL);
+        heroText.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        TextView type = new TextView(activity);
+        type.setText(it.type.labelAr);
+        type.setTextColor(it.type.accent);
+        type.setTextSize(12);
+        type.setTypeface(Typeface.DEFAULT_BOLD);
         TextView title = new TextView(activity);
         title.setText(it.title);
-        title.setTextColor(0xFFF5F7FA);
-        title.setTextSize(20);
+        title.setTextColor(0xFFF4F6FA);
+        title.setTextSize(19);
         title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setGravity(Gravity.CENTER_HORIZONTAL);
-        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleLp.bottomMargin = dp(activity, 10);
-        card.addView(title, titleLp);
+        title.setGravity(Gravity.RIGHT);
+        heroText.addView(type);
+        heroText.addView(title, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams htp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        htp.setMargins(dp(activity, 12), 0, 0, 0);
+        hero.addView(heroText, htp);
+        card.addView(hero);
 
-        ScrollView sc = new ScrollView(activity);
-        TextView body = new TextView(activity);
-        body.setText(it.body == null ? "" : it.body);
-        body.setTextColor(0xFFB0BEC5);
-        body.setTextSize(14.5f);
-        body.setLineSpacing(dp(activity, 3), 1f);
-        body.setGravity(Gravity.CENTER_HORIZONTAL);
-        sc.addView(body);
-        DisplayMetrics dm = activity.getResources().getDisplayMetrics();
-        final int maxBody = (int) (dm.heightPixels * 0.28f);
-        LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        bodyLp.bottomMargin = dp(activity, 18);
-        sc.setLayoutParams(bodyLp);
-        sc.post(() -> {
-            if (sc.getHeight() > maxBody) {
-                ViewGroup.LayoutParams lp = sc.getLayoutParams();
-                lp.height = maxBody;
-                sc.setLayoutParams(lp);
-            }
-        });
-        card.addView(sc);
-
-        TextView primary = makeButton(activity, it.primaryButtonText, it.type.accent, true);
-        primary.setOnClickListener(v -> {
-            runAction(activity, it.primaryAction, it.primaryUrl);
-            try { dialog.dismiss(); } catch (Exception ignored) {}
-        });
-        LinearLayout.LayoutParams pLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        pLp.bottomMargin = dp(activity, 8);
-        card.addView(primary, pLp);
-
-        if (it.secondaryButtonText != null && !it.secondaryButtonText.isEmpty()) {
-            TextView secondary = makeButton(activity, it.secondaryButtonText, 0xFF37474F, false);
-            secondary.setOnClickListener(v -> {
-                runAction(activity, it.secondaryAction, it.secondaryUrl);
-                try { dialog.dismiss(); } catch (Exception ignored) {}
-            });
-            card.addView(secondary, pLp);
-        } else if (it.dismissible) {
-            TextView close = makeButton(activity, "إغلاق", 0xFF37474F, false);
-            close.setOnClickListener(v -> {
-                try { dialog.dismiss(); } catch (Exception ignored) {}
-            });
-            card.addView(close, pLp);
+        if (it.type == AnnType.POLICY) {
+            TextView note = new TextView(activity);
+            note.setText("🛡️  معلومات مهمة تخص استخدامك للتطبيق");
+            note.setTextColor(0xFFB8C4E0);
+            note.setTextSize(12);
+            note.setPadding(0, dp(activity, 12), 0, 0);
+            card.addView(note);
+        } else if (it.type == AnnType.UPDATE) {
+            TextView note = new TextView(activity);
+            note.setText("🎉  إصدار جديد وتحسينات جاهزة");
+            note.setTextColor(0xFF9ADFD3);
+            note.setTextSize(12);
+            note.setPadding(0, dp(activity, 12), 0, 0);
+            card.addView(note);
+        } else if (it.type == AnnType.SPORTS) {
+            TextView note = new TextView(activity);
+            note.setText("🏃  جاهز للتحدي؟ خلّي إنجازك يتكلم!");
+            note.setTextColor(0xFF9CCBFF);
+            note.setTextSize(12);
+            note.setPadding(0, dp(activity, 12), 0, 0);
+            card.addView(note);
+        } else if (it.type == AnnType.OFFER) {
+            TextView note = new TextView(activity);
+            note.setText("🎁  فرصة محدودة");
+            note.setTextColor(0xFFFFD36A);
+            note.setTextSize(12);
+            note.setTypeface(Typeface.DEFAULT_BOLD);
+            note.setPadding(0, dp(activity, 12), 0, 0);
+            card.addView(note);
         }
 
+        if (it.body != null && !it.body.isEmpty()) {
+            TextView body = new TextView(activity);
+            body.setText(it.body);
+            body.setTextColor(0xFFD6DCE8);
+            body.setTextSize(14);
+            body.setLineSpacing(0, 1.15f);
+            body.setGravity(Gravity.RIGHT);
+            body.setPadding(0, dp(activity, 12), 0, dp(activity, 12));
+            card.addView(body);
+        }
+
+        LinearLayout buttons = new LinearLayout(activity);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setGravity(Gravity.CENTER_VERTICAL);
+        buttons.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        if (it.primaryButtonText != null && !it.primaryButtonText.isEmpty()) {
+            TextView primary = new TextView(activity);
+            primary.setText(it.primaryButtonText);
+            primary.setTextColor(Color.WHITE);
+            primary.setGravity(Gravity.CENTER);
+            primary.setTypeface(Typeface.DEFAULT_BOLD);
+            primary.setTextSize(13);
+            GradientDrawable pbg = new GradientDrawable();
+            pbg.setColor(it.type.accent);
+            pbg.setCornerRadius(dp(activity, 12));
+            primary.setBackground(pbg);
+            primary.setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 10));
+            primary.setOnClickListener(v -> handleAction(activity, dialog, it.primaryAction, it.primaryUrl));
+            buttons.addView(primary, new LinearLayout.LayoutParams(0, dp(activity, 44), 1f));
+        }
+
+        if (it.secondaryButtonText != null && !it.secondaryButtonText.isEmpty()) {
+            TextView secondary = new TextView(activity);
+            secondary.setText(it.secondaryButtonText);
+            secondary.setTextColor(0xFFD6DCE8);
+            secondary.setGravity(Gravity.CENTER);
+            secondary.setTextSize(13);
+            GradientDrawable sbg = new GradientDrawable();
+            sbg.setColor(0x221FFFFFF);
+            sbg.setCornerRadius(dp(activity, 12));
+            secondary.setBackground(sbg);
+            secondary.setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 10));
+            secondary.setOnClickListener(v -> handleAction(activity, dialog, it.secondaryAction, it.secondaryUrl));
+            LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(0, dp(activity, 44), 1f);
+            slp.setMargins(dp(activity, 8), 0, 0, 0);
+            buttons.addView(secondary, slp);
+        }
+        card.addView(buttons, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         return card;
     }
 
