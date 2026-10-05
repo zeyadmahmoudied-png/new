@@ -549,7 +549,7 @@ public final class AnnouncementManager {
             secondary.setGravity(Gravity.CENTER);
             secondary.setTextSize(13);
             GradientDrawable sbg = new GradientDrawable();
-            sbg.setColor(0x221FFFFFF);
+            sbg.setColor(0x22FFFFFF);
             sbg.setCornerRadius(dp(activity, 12));
             secondary.setBackground(sbg);
             secondary.setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 10));
