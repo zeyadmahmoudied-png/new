@@ -813,7 +813,7 @@ public class MainActivity extends Activity {
         }
         head.addView(info,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1f));
         if (scheduleViewMode == 0) {
-            TextView dayPencil = new TextView(this); dayPencil.setText(dayEditMode ? "✓" : "✏️");
+            TextView dayPencil = primaryBtn(dayEditMode ? "تم" : "تعديل"); dayPencil.setTextSize(12);
             dayPencil.setTextSize(20); dayPencil.setGravity(Gravity.CENTER); dayPencil.setBackgroundColor(0x00000000);
             dayPencil.setContentDescription("تعديل اليوم");
             dayPencil.setOnClickListener(v -> {
@@ -823,10 +823,10 @@ public class MainActivity extends Activity {
                         Toast.LENGTH_SHORT).show();
                 refreshScheduleModeView();
             });
-            head.addView(dayPencil,new LinearLayout.LayoutParams(dp(48),dp(42)));
+            head.addView(dayPencil,new LinearLayout.LayoutParams(dp(78),dp(40)));
         }
         if (scheduleViewMode == 1 || scheduleViewMode == 2) {
-            TextView periodPencil = new TextView(this); periodPencil.setText(dayEditMode ? "✓" : "✏️");
+            TextView periodPencil = primaryBtn(dayEditMode ? "تم" : "تعديل"); periodPencil.setTextSize(12);
             periodPencil.setTextSize(20); periodPencil.setGravity(Gravity.CENTER); periodPencil.setBackgroundColor(0x00000000);
             periodPencil.setContentDescription(scheduleViewMode == 1 ? "تعديل الأسبوع" : "تعديل المخصص");
             periodPencil.setOnClickListener(v -> {
@@ -836,7 +836,7 @@ public class MainActivity extends Activity {
                         Toast.LENGTH_SHORT).show();
                 refreshScheduleModeView();
             });
-            head.addView(periodPencil,new LinearLayout.LayoutParams(dp(48),dp(42)));
+            head.addView(periodPencil,new LinearLayout.LayoutParams(dp(78),dp(40)));
         }
         box.addView(head);
         box.addView(space(dp(10)));
@@ -1000,21 +1000,46 @@ public class MainActivity extends Activity {
 
     private void enableSessionFreeDrag(View card, Planner.Session s) {
         if (s == null || s.done) return;
-        card.setOnLongClickListener(v -> {
+        final float[] downX = {0f};
+        final float[] downY = {0f};
+        final boolean[] started = {false};
+        card.setOnTouchListener((v, event) -> {
             if (!dayEditMode) return false;
-            draggingSession = s;
-            draggingCardView = v;
-            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            android.content.ClipData data = android.content.ClipData.newPlainText("sessionId", s.id == null ? "" : s.id);
-            View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
-            boolean ok = Build.VERSION.SDK_INT >= 24
-                    ? v.startDragAndDrop(data, shadow, s, 0)
-                    : v.startDrag(data, shadow, s, 0);
-            if (!ok) {
-                draggingSession = null;
-                draggingCardView = null;
-            } else {
-                v.setAlpha(0.35f);
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    downX[0] = event.getRawX();
+                    downY[0] = event.getRawY();
+                    started[0] = false;
+                    draggingSession = s;
+                    draggingCardView = v;
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (!started[0] && (Math.abs(event.getRawX() - downX[0]) > dp(10)
+                            || Math.abs(event.getRawY() - downY[0]) > dp(10))) {
+                        started[0] = true;
+                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                        android.content.ClipData data = android.content.ClipData.newPlainText(
+                                "sessionId", s.id == null ? "" : s.id);
+                        View.DragShadowBuilder shadow = new View.DragShadowBuilder(v);
+                        boolean ok = Build.VERSION.SDK_INT >= 24
+                                ? v.startDragAndDrop(data, shadow, s, 0)
+                                : v.startDrag(data, shadow, s, 0);
+                        if (!ok) {
+                            draggingSession = null;
+                            draggingCardView = null;
+                            return false;
+                        }
+                        v.setAlpha(0.35f);
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (!started[0]) {
+                        draggingSession = null;
+                        draggingCardView = null;
+                        v.performClick();
+                    }
+                    return true;
             }
             return true;
         });
@@ -5256,9 +5281,17 @@ public class MainActivity extends Activity {
             Collections.sort(exams, (a,b) -> {
                 if (examSortMode == 1) {
                     int p = Integer.compare(
-                            Math.max(0, Math.min(100, b.prepLevel)),
-                            Math.max(0, Math.min(100, a.prepLevel)));
+                            Math.max(0, Math.min(100, a.prepLevel)),
+                            Math.max(0, Math.min(100, b.prepLevel)));
                     if (p != 0) return p;
+                } else if (examSortMode == 2) {
+                    int daDays = Math.max(0, daysUntil(a.day));
+                    int dbDays = Math.max(0, daysUntil(b.day));
+                    int aScore = (100 - Math.max(0, Math.min(100, a.prepLevel))) * 10 / (daDays + 1)
+                            + Math.max(0, a.neededMin / 60);
+                    int bScore = (100 - Math.max(0, Math.min(100, b.prepLevel))) * 10 / (dbDays + 1)
+                            + Math.max(0, b.neededMin / 60);
+                    if (aScore != bScore) return Integer.compare(bScore, aScore);
                 }
                 long da = Long.MAX_VALUE, db = Long.MAX_VALUE;
                 try { da = Planner.dayCal(a.day).getTimeInMillis(); } catch(Exception ignored) {}
@@ -5367,7 +5400,7 @@ public class MainActivity extends Activity {
     }
 
     private void showExamViewChoices(TextView anchor) {
-        String[] choices = {"حسب الجدول", "حسب مستوى التجهيز"};
+        String[] choices = {"حسب الجدول", "حسب مستوى التجهيز", "منطق التدريب"};
         int selected = examSortMode;
         showFloatingChoices(anchor, choices, selected, idx -> {
             examSortMode = idx;
@@ -5388,11 +5421,29 @@ public class MainActivity extends Activity {
         final String[] day={existing!=null&&existing.day!=null?existing.day:""};
         TextView dayTv=dialogChoice(day[0].isEmpty()?"اختار التاريخ":day[0],!day[0].isEmpty());
         dayTv.setOnClickListener(v->{Calendar cal=Calendar.getInstance();DatePickerDialog dpd=new DatePickerDialog(this,(vv,y,m,d)->{day[0]=String.format(Locale.US,"%04d-%02d-%02d",y,m+1,d);dayTv.setText(day[0]);dayTv.setTextColor(ACCENT);},cal.get(Calendar.YEAR),cal.get(Calendar.MONTH),cal.get(Calendar.DAY_OF_MONTH));dpd.setOnShowListener(x->styleBlueDialog(dpd));dpd.show();});form.addView(dayTv);
-        form.addView(space(dp(12)));TextView moreToggle=link("خيارات إضافية ▾");moreToggle.setTextColor(ACCENT);form.addView(moreToggle);
+        form.addView(space(dp(10)));
+        final int[] prep={existing!=null?existing.prepLevel:40};
+        TextView prepTv=new TextView(this);
+        prepTv.setText("مستوى التجهيز: "+prep[0]+"%");
+        prepTv.setTextColor(ACCENT);
+        prepTv.setTextSize(13);
+        prepTv.setTypeface(Typeface.DEFAULT_BOLD);
+        SeekBar prepBar=new SeekBar(this);
+        prepBar.setMax(100);
+        prepBar.setProgress(prep[0]);
+        prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar s,int p,boolean f){prep[0]=p;prepTv.setText("مستوى التجهيز: "+p+"%");}
+            public void onStartTrackingTouch(SeekBar s){}
+            public void onStopTrackingTouch(SeekBar s){}
+        });
+        form.addView(prepTv);
+        form.addView(prepBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(42)));
+        form.addView(space(dp(8)));
+        TextView moreToggle=link("خيارات إضافية ▾");moreToggle.setTextColor(ACCENT);form.addView(moreToggle);
         LinearLayout moreBox=new LinearLayout(this);moreBox.setOrientation(LinearLayout.VERTICAL);moreBox.setVisibility(View.GONE);moreBox.setPadding(0,dp(8),0,0);
         TextView topicsLabel=label("الفصول أو الأجزاء");topicsLabel.setTextColor(TEXT);moreBox.addView(topicsLabel);
         EditText topics=dialogField();topics.setHint("اختياري");if(existing!=null&&existing.topics!=null)topics.setText(existing.topics);moreBox.addView(topics);
-        moreBox.addView(space(dp(8)));final int[] prep={existing!=null?existing.prepLevel:40};TextView prepTv=new TextView(this);prepTv.setText("مستوى التجهيز: "+prep[0]+"%");prepTv.setTextColor(TEXT);prepTv.setTextSize(12);SeekBar prepBar=new SeekBar(this);prepBar.setMax(100);prepBar.setProgress(prep[0]);prepBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){prep[0]=p;prepTv.setText("مستوى التجهيز: "+p+"%");}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});moreBox.addView(prepTv);moreBox.addView(prepBar);
+        
         moreBox.addView(space(dp(8)));TextView lastLabel=label("آخر محاضرة داخلة في الامتحان");lastLabel.setTextColor(TEXT);moreBox.addView(lastLabel);TextView lastHint=muted("مثال: محاضرة 7 → الامتحان يشمل 1…7.");lastHint.setTextColor(MUTED);moreBox.addView(lastHint);
         final String[] lastLecId={existing!=null&&existing.lastLectureTaskId!=null?existing.lastLectureTaskId:""};String lastLecLabel="بدون تحديد";if(!lastLecId[0].isEmpty()){Planner.Task lt=planner.findTask(lastLecId[0]);if(lt!=null){int n=Planner.lectureNumber(lt);lastLecLabel=(n>=0?("محاضرة "+n+" — "):"")+(lt.name==null?"?":lt.name);}}
         TextView lastLecTv=dialogChoice(lastLecLabel);
