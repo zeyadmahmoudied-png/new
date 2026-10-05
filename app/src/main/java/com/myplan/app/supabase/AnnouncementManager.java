@@ -538,7 +538,7 @@ public final class AnnouncementManager {
             pbg.setCornerRadius(dp(activity, 12));
             primary.setBackground(pbg);
             primary.setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 10));
-            primary.setOnClickListener(v -> performAction(activity, dialog, it.primaryAction, it.primaryUrl));
+            primary.setOnClickListener(v -> runAction(activity, dialog, it.primaryAction, it.primaryUrl));
             buttons.addView(primary, new LinearLayout.LayoutParams(0, dp(activity, 44), 1f));
         }
 
@@ -553,7 +553,7 @@ public final class AnnouncementManager {
             sbg.setCornerRadius(dp(activity, 12));
             secondary.setBackground(sbg);
             secondary.setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 10));
-            secondary.setOnClickListener(v -> performAction(activity, dialog, it.secondaryAction, it.secondaryUrl));
+            secondary.setOnClickListener(v -> runAction(activity, dialog, it.secondaryAction, it.secondaryUrl));
             LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(0, dp(activity, 44), 1f);
             slp.setMargins(dp(activity, 8), 0, 0, 0);
             buttons.addView(secondary, slp);
