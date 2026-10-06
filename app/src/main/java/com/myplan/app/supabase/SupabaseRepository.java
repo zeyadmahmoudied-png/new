@@ -293,80 +293,72 @@ public final class SupabaseRepository {
                 ("myplan-user:" + localUserId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
     }
 
-    /** تسجيل/تحديث صف في app_users — بيانات أساسية فقط (لا Planner). */
+    /** تسجيل/تحديث ملف المستخدم في profiles — الاسم والبريد فقط. */
     public ApiResult<Void> registerAppUser(AccountAuth.Account account) {
         if (!isReady()) return ApiResult.notConfigured();
-        if (account == null || account.userId == null || account.userId.isEmpty()) {
-            return ApiResult.validation(0, "لا يوجد حساب");
+        String uid = SupabaseAuthSession.userId(app);
+        if (uid == null || uid.isEmpty()) {
+            String local = account == null ? "" : account.userId;
+            uid = remoteUserUuid(local);
         }
+        if (uid == null || uid.isEmpty()) return ApiResult.validation(0, "لا يوجد حساب");
         try {
             JSONObject body = new JSONObject();
-            body.put("id", remoteUserUuid(account.userId));
-            if (account.email != null && !account.email.isEmpty()) body.put("email", account.email);
-            if (account.displayName != null && !account.displayName.isEmpty()) {
+            body.put("id", uid);
+            if (account != null && account.email != null && !account.email.isEmpty())
+                body.put("email", account.email);
+            if (account != null && account.displayName != null && !account.displayName.isEmpty())
                 body.put("display_name", account.displayName);
-            }
-            body.put("status", "active");
-            // Prefer merge على id إن وُجدت سياسة/قيود
+            body.put("updated_at", new java.text.SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.US).format(new java.util.Date()));
             ApiResult<String> r = http.postPrefer(
-                    "/rest/v1/app_users?on_conflict=id",
-                    "[" + body + "]",
+                    "/rest/v1/profiles?on_conflict=id", "[" + body + "]",
                     "resolution=merge-duplicates,return=minimal");
             if (r.isSuccess()) return ApiResult.success(null);
-            // محاولة INSERT عادية
-            r = http.post("/rest/v1/app_users", "[" + body + "]");
-            if (r.isSuccess()) return ApiResult.success(null);
-            return ApiResult.unknown(r.message);
+            // لو الصف موجود بالفعل، حدّث الاسم والبريد فقط.
+            r = http.patch("/rest/v1/profiles?id=eq." + urlEncode(uid), body.toString());
+            return r.isSuccess() ? ApiResult.success(null) : ApiResult.unknown(r.message);
         } catch (Exception e) {
-            return ApiResult.unknown("app_users register failed");
+            return ApiResult.unknown("profile register failed");
         }
     }
 
-    /** تسجيل/تحديث جهاز — لا يغيّر Installation ID ولا يمسح أجهزة أخرى. */
+    /** تحديث اسم المستخدم من الاسم المحفوظ محليًا عبر RPC الآمن. */
+    public ApiResult<Void> updateMyProfileName(String displayName) {
+        if (!isReady() || !SupabaseAuthSession.isSignedIn(app)) return ApiResult.notConfigured();
+        try {
+            JSONObject b = new JSONObject();
+            b.put("p_display_name", displayName == null ? JSONObject.NULL : displayName.trim());
+            ApiResult<String> r = http.post("/rest/v1/rpc/update_my_profile", b.toString());
+            return r.isSuccess() ? ApiResult.success(null) : ApiResult.unknown(r.message);
+        } catch (Exception e) {
+            return ApiResult.unknown("profile name update failed");
+        }
+    }
+
+    /** تسجيل/تحديث الجهاز عبر RPC الذي يملأ schema الحالي بالكامل. */
     public ApiResult<Void> upsertDevice() {
-        if (!isReady()) return ApiResult.notConfigured();
+        if (!isReady() || !SupabaseAuthSession.isSignedIn(app)) return ApiResult.notConfigured();
         try {
             JSONObject body = new JSONObject();
-            String inst = AppInfrastructure.getInstallationId(app);
-            body.put("installation_id", inst);
-            String uid = AccountAuth.getSessionUserId(app);
-            if (uid != null && !uid.isEmpty()) {
-                body.put("user_id", remoteUserUuid(uid));
-            }
-            try {
-                String androidId = android.provider.Settings.Secure.getString(
-                        app.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
-                if (androidId != null && !androidId.isEmpty()) body.put("android_id", androidId);
-            } catch (Exception ignored) {}
-            try {
-                body.put("platform", "android");
-                body.put("app_version", com.myplan.app.BuildConfig.VERSION_NAME);
-            } catch (Exception ignored) {}
-            // last_seen إن دعمه الـschema
-            try {
-                body.put("last_seen", new java.text.SimpleDateFormat(
-                        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.US)
-                        .format(new java.util.Date()));
-            } catch (Exception ignored) {}
-            ApiResult<String> r = http.postPrefer(
-                    "/rest/v1/devices?on_conflict=installation_id",
-                    "[" + body + "]",
-                    "resolution=merge-duplicates,return=minimal");
-            if (r.isSuccess()) return ApiResult.success(null);
-            // أزل حقولًا قد لا توجد في schema ثم أعد المحاولة
-            body.remove("last_seen");
-            body.remove("platform");
-            body.remove("app_version");
-            r = http.postPrefer(
-                    "/rest/v1/devices?on_conflict=installation_id",
-                    "[" + body + "]",
-                    "resolution=merge-duplicates,return=minimal");
-            if (r.isSuccess()) return ApiResult.success(null);
-            r = http.post("/rest/v1/devices", "[" + body + "]");
-            if (r.isSuccess()) return ApiResult.success(null);
-            return ApiResult.unknown(r.message);
+            body.put("p_installation_id", AppInfrastructure.getInstallationId(app));
+            body.put("p_device_id", android.provider.Settings.Secure.getString(
+                    app.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID));
+            body.put("p_device_name", android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL);
+            body.put("p_device_model", android.os.Build.MODEL);
+            body.put("p_os_name", "Android");
+            body.put("p_os_version", android.os.Build.VERSION.RELEASE);
+            body.put("p_android_version", android.os.Build.VERSION.RELEASE);
+            body.put("p_app_version_name", com.myplan.app.BuildConfig.VERSION_NAME);
+            body.put("p_app_version_code", com.myplan.app.BuildConfig.VERSION_CODE);
+            body.put("p_metadata", new JSONObject()
+                    .put("manufacturer", android.os.Build.MANUFACTURER)
+                    .put("brand", android.os.Build.BRAND)
+                    .put("sdk", android.os.Build.VERSION.SDK_INT));
+            ApiResult<String> r = http.post("/rest/v1/rpc/register_device", body.toString());
+            return r.isSuccess() ? ApiResult.success(null) : ApiResult.unknown(r.message);
         } catch (Exception e) {
-            return ApiResult.unknown("device upsert failed");
+            return ApiResult.unknown("device register failed");
         }
     }
 
@@ -375,7 +367,7 @@ public final class SupabaseRepository {
         if (!isReady() || token == null || token.trim().isEmpty()) return ApiResult.notConfigured();
         try {
             JSONObject body = new JSONObject();
-            body.put("fcm_token", token.trim());
+            body.put("push_token", token.trim());
             body.put("last_seen_at", new java.text.SimpleDateFormat(
                     "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.US).format(new java.util.Date()));
             ApiResult<String> r = http.patch("/rest/v1/devices?installation_id=eq." + urlEncode(AppInfrastructure.getInstallationId(app)), body.toString());
@@ -421,7 +413,7 @@ public final class SupabaseRepository {
                     ? "" : remoteUserUuid(localUid);
             String q;
             if (!remoteId.isEmpty()) {
-                q = "/rest/v1/remote_messages?select=id,title,body,created_at,target_type,target_id,is_active,message_type"
+                q = "/rest/v1/messages?select=id,title,body,created_at,target_type,target_id,is_active,message_type"
                         + "&is_active=eq.true"
                         + "&message_type=eq.in_app"
                         + "&or=(target_type.eq.all,and(target_type.eq.user,target_id.eq." + remoteId + "))"
@@ -463,7 +455,7 @@ public final class SupabaseRepository {
         if (!isReady()) return ApiResult.notConfigured();
         if (id <= 0) return ApiResult.validation(0, "معرّف غير صالح");
         try {
-            ApiResult<String> r = http.delete("/rest/v1/remote_messages?id=eq." + id);
+            ApiResult<String> r = http.delete("/rest/v1/messages?id=eq." + id);
             if (r.isSuccess()) return ApiResult.success(null);
             return ApiResult.unknown(r.message != null ? r.message : "تعذّر الحذف");
         } catch (Exception e) {
@@ -481,7 +473,7 @@ public final class SupabaseRepository {
             JSONObject body = new JSONObject();
             body.put("title", type == null || type.isEmpty() ? "تواصل" : type);
             body.put("body", message == null ? "" : message);
-            body.put("message_type", "contact");
+            body.put("message_type", "general");
             body.put("target_type", "support");
             body.put("is_active", true);
             String localUid = userId;
@@ -494,7 +486,7 @@ public final class SupabaseRepository {
             if (localUid != null && !localUid.isEmpty()) {
                 body.put("target_id", remoteUserUuid(localUid));
             }
-            ApiResult<String> r = http.post("/rest/v1/remote_messages", "[" + body + "]");
+            ApiResult<String> r = http.post("/rest/v1/messages", "[" + body + "]");
             if (r.isSuccess()) return ApiResult.success(null);
             body.remove("target_type");
             body.remove("target_id");
