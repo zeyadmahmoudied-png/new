@@ -152,12 +152,22 @@ public class LoginActivity extends Activity {
             if (r.ok) {
                 final AccountAuth.Account acc = AccountAuth.getCurrentAccount(this);
                 final android.content.Context appCtx = getApplicationContext();
+                final String authEmail = email.getText().toString().trim();
+                final String authPassword = pass.getText().toString();
                 new Thread(() -> {
                     try {
                         if (com.myplan.app.supabase.SupabaseConfig.isConfigured(appCtx)) {
+                            // Keep the existing local account flow, then bridge the same credentials
+                            // to Supabase Auth so RLS/RPC can identify the real user.
+                            com.myplan.app.supabase.SupabaseAuthSession.ensureSignedIn(
+                                    appCtx, authEmail, authPassword, reg,
+                                    acc != null ? acc.displayName : "");
                             com.myplan.app.supabase.SupabaseRepository repo =
                                     new com.myplan.app.supabase.SupabaseRepository(appCtx);
-                            if (acc != null) repo.registerAppUser(acc);
+                            if (acc != null) {
+                                repo.registerAppUser(acc);
+                                repo.updateMyProfileName(acc.displayName);
+                            }
                             repo.upsertDevice();
                             com.myplan.app.supabase.AdminBanGate.refresh(appCtx);
                         }
