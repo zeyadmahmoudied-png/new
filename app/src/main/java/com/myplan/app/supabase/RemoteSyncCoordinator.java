@@ -38,7 +38,7 @@ public final class RemoteSyncCoordinator {
         android.util.Log.d("RemoteSync", "REMOTE_SYNC_START");
         ApiResult<JSONObject> fetched = repo.fetchAndCacheControlState();
         if (fetched.isSuccess()) {
-            applyFeatureFlagsToLocal(app);
+            mergeOperationalControlState(app);\n            applyFeatureFlagsToLocal(app);
             applyRemotePremiumGrant(app);
             flushPendingContactMessages(app, repo);
             AnnouncementManager.fetchAndCache(app);
@@ -67,6 +67,54 @@ public final class RemoteSyncCoordinator {
             AdminBanGate.refresh(app);
         } catch (Exception ignored) {}
         return lastStatus;
+    }
+
+    /** Reads the current Control Center operational tables into the offline snapshot. */
+    private static void mergeOperationalControlState(Context app) {
+        try {
+            SupabaseRepository repo = new SupabaseRepository(app);
+            JSONObject snap = RemoteControlCache.loadSnapshot(app);
+            if (snap == null) snap = new JSONObject();
+
+            ApiResult<String> r = repo.httpGet("/rest/v1/maintenance_settings?select=*&order=id.desc&limit=1");
+            if (r.isSuccess() && r.data != null) {
+                JSONArray a = new JSONArray(r.data);
+                if (a.length() > 0) {
+                    JSONObject row = a.getJSONObject(0);
+                    snap.put("maintenance", row.optBoolean("is_enabled", row.optBoolean("enabled", false)));
+                    snap.put("maintenance_message", row.optString("message", ""));
+                    snap.put("maintenance_warning_before", row.optBoolean("show_warning_before", false));
+                    snap.put("maintenance_warning_minutes", row.optInt("warning_minutes", 0));
+                }
+            }
+
+            r = repo.httpGet("/rest/v1/ads_config?select=*&order=id.desc&limit=1");
+            if (r.isSuccess() && r.data != null) {
+                JSONArray a = new JSONArray(r.data);
+                if (a.length() > 0) {
+                    JSONObject row = a.getJSONObject(0), ads = new JSONObject();
+                    ads.put("enabled", row.optBoolean("is_enabled", row.optBoolean("ads_enabled", false)));
+                    ads.put("banner", row.optBoolean("banner_enabled", false));
+                    ads.put("interstitial", row.optBoolean("interstitial_enabled", false));
+                    ads.put("rewarded", row.optBoolean("rewarded_enabled", false));
+                    ads.put("frequency_cap", row.optInt("frequency_cap", 0));
+                    if (row.has("placements")) ads.put("placements", row.opt("placements"));
+                    snap.put("ads_config", ads);
+                    snap.put("ads", ads.optBoolean("enabled", false));
+                    snap.put("banner_ads", ads.optBoolean("banner", false));
+                    snap.put("interstitial_ads", ads.optBoolean("interstitial", false));
+                    snap.put("rewarded_ads", ads.optBoolean("rewarded", false));
+                }
+            }
+
+            r = repo.httpGet("/rest/v1/ad_banner_placements?select=*&enabled=eq.true&limit=100");
+            if (r.isSuccess() && r.data != null) snap.put("ad_placements", new JSONArray(r.data));
+
+            r = repo.httpGet("/rest/v1/notifications?select=*&status=eq.active&order=created_at.desc&limit=50");
+            if (r.isSuccess() && r.data != null) snap.put("notifications", new JSONArray(r.data));
+
+            RemoteControlCache.saveSnapshot(app, snap);
+        } catch (Exception ignored) {}
     }
 
     /** يحدّث Flags المحلية من الكاش البعيد بدون مسح قيم غير معروفة */
