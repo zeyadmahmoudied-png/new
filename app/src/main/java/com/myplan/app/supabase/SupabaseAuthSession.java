@@ -164,7 +164,7 @@ public final class SupabaseAuthSession {
 
     private static String readAll(InputStream in) {
         if (in == null) return "";
-        try (Scanner s = new Scanner(in, "UTF-8").useDelimiter("\A")) {
+        try (Scanner s = new Scanner(in, "UTF-8").useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         } catch (Exception e) {
             return "";
