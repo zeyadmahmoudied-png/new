@@ -1,4 +1,5 @@
 # CI build workflow
+# Mobile identity and support-message fixes build from this branch.
 name: Build My Plan APK
 
 on:
