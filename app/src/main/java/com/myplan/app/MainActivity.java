@@ -168,7 +168,9 @@ public class MainActivity extends Activity {
         // Remote Control (Supabase) — لا يمس Planner
         content.post(this::applyRemoteControlGates);
         content.post(this::applyAdminBanGates);
-        com.myplan.app.supabase.RemoteSyncCoordinator.syncAsync(this);\n        // Apply freshly synced Control Center gates after the background sync completes.\n        content.postDelayed(this::applyRemoteControlGates, 1800);
+        com.myplan.app.supabase.RemoteSyncCoordinator.syncAsync(this);
+        // Apply freshly synced Control Center gates after the background sync completes.
+        content.postDelayed(this::applyRemoteControlGates, 1800);
         // تحديث الحظر + الرسائل + Announcements في الخلفية بعد الدخول
         new Thread(() -> {
             try {
@@ -567,8 +569,12 @@ public class MainActivity extends Activity {
         String name = first != null && first.taskName != null ? first.taskName : "محاضرة";
         final String firstId = first != null ? first.id : null;
         myDialog().setTitle("جلسة فائتة")
-                .setMessage("فاتتك «" + name + "»\nمدتها " + dur + " دقيقة.\n\n"
-                        + "في " + missed.size() + " جلسة فائتة.\nأقدر أتعامل معاها بعدة طرق — اختار الأنسب.")
+                .setMessage("فاتتك «" + name + "»
+مدتها " + dur + " دقيقة.
+
+"
+                        + "في " + missed.size() + " جلسة فائتة.
+أقدر أتعامل معاها بعدة طرق — اختار الأنسب.")
                 .setPositiveButton("عرض الاقتراحات", (d, w) -> {
                     // بعد إغلاق الحوار — على الـUI thread في الدورة التالية
                     if (content != null) {
@@ -727,7 +733,8 @@ public class MainActivity extends Activity {
                 addScheduleDayBlock(box,day,false);
                 c.add(Calendar.DAY_OF_YEAR,1);
             }
-            if(!any&&planner.sessions.isEmpty()) box.addView(emptyState("مفيش خطة لسه.\nضيف مهام واعمل خطتك."));
+            if(!any&&planner.sessions.isEmpty()) box.addView(emptyState("مفيش خطة لسه.
+ضيف مهام واعمل خطتك."));
         }
 
         // المكتملة في آخر الشاشة فقط، وتحتوي على المكتمل فقط.
@@ -1266,7 +1273,9 @@ public class MainActivity extends Activity {
                     if (chosen > slotAvailF) {
                         myDialog().setTitle("تأكيد تعديل المدة")
                                 .setMessage("المدة المختارة (" + chosen + " د) أكبر من المتاح حاليًا ("
-                                        + slotAvailF + " د).\nسيتم تعديل/إعادة توزيع الجدول حسب القيود.\nهل تريد المتابعة؟")
+                                        + slotAvailF + " د).
+سيتم تعديل/إعادة توزيع الجدول حسب القيود.
+هل تريد المتابعة؟")
                                 .setPositiveButton("تأكيد", (d2, w2) -> apply.run())
                                 .setNegativeButton("إلغاء", null)
                                 .show();
@@ -1321,9 +1330,12 @@ public class MainActivity extends Activity {
                 box.setPadding(dp(8), dp(4), dp(8), dp(4));
                 TextView intro = muted("فاتتك «" + name + "»"
                         + (executed > 0
-                        ? ("\nاستكمال — متبقي " + rem + " د (نُفِّذ " + executed + " د)")
-                        : ("\nمدتها " + rem + " دقيقة"))
-                        + "\nاختار موعدًا:");
+                        ? ("
+استكمال — متبقي " + rem + " د (نُفِّذ " + executed + " د)")
+                        : ("
+مدتها " + rem + " دقيقة"))
+                        + "
+اختار موعدًا:");
                 box.addView(intro);
                 box.addView(space(dp(8)));
                 final java.util.List<Planner.MissedSuggestion> finalList = list;
@@ -1396,7 +1408,9 @@ public class MainActivity extends Activity {
         final String sid = s.id;
         final String labelTxt = (s.taskName != null ? s.taskName : "") + " · " + s.timeLabel();
         myDialog().setTitle("تعديل موعد المحاضرة")
-                .setMessage(labelTxt + "\n\nاختار:")
+                .setMessage(labelTxt + "
+
+اختار:")
                 .setPositiveButton("تأجيل", (d, w) -> content.post(() -> showShiftMinutesDialog(sid, labelTxt, false)))
                 .setNeutralButton("أعملها بدري", (d, w) -> content.post(() -> showShiftMinutesDialog(sid, labelTxt, true)))
                 .setNegativeButton("إلغاء", null)
@@ -1493,7 +1507,8 @@ public class MainActivity extends Activity {
         }
         myDialog()
                 .setTitle("خلّصت بدري")
-                .setMessage("عايز تعمل إيه في باقي جدول النهاردة؟\n(التغيير على اليوم ده بس)")
+                .setMessage("عايز تعمل إيه في باقي جدول النهاردة؟
+(التغيير على اليوم ده بس)")
                 .setPositiveButton("جدولة اليوم", (d, w) -> markReflow.run())
                 .setNeutralButton("إبقاء كما هو", (d, w) -> markOnly.run())
                 .setNegativeButton("إلغاء", null)
@@ -1886,10 +1901,12 @@ public class MainActivity extends Activity {
         msg.setTextColor(TEXT);
         msg.setTextSize(14f);
         if (group.size() == 2) {
-            msg.setText("مهمتان متساويتان في أولوية الجدولة.\n"
+            msg.setText("مهمتان متساويتان في أولوية الجدولة.
+"
                     + "اضغط المهمة التي تريدها أولًا، أو «أي ترتيب».");
         } else {
-            msg.setText("يوجد " + group.size() + " مهام متساوية في أولوية الجدولة.\n"
+            msg.setText("يوجد " + group.size() + " مهام متساوية في أولوية الجدولة.
+"
                     + "اضغط المهام بالترتيب المطلوب (الأولى أولًا)، أو «أي ترتيب».");
         }
         root.addView(msg);
@@ -2246,7 +2263,8 @@ public class MainActivity extends Activity {
             else if (idx == 2) {
                 myDialog()
                         .setTitle("حذف الجدول")
-                        .setMessage("هيتحذف الجدول المُولَّد فقط.\nالمهام والامتحانات والمواد والإعدادات مش هتتأثر.")
+                        .setMessage("هيتحذف الجدول المُولَّد فقط.
+المهام والامتحانات والمواد والإعدادات مش هتتأثر.")
                         .setPositiveButton("حذف", (d, w) -> {
                             planner.clearGeneratedSchedule();
                             SessionAlarmScheduler.resync(this, planner);
@@ -2268,7 +2286,8 @@ public class MainActivity extends Activity {
         form.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
         if (cur == null) {
-            form.addView(muted("مفيش محاضرة ظهرت النهاردة ولسه متبقية.\n«إضافي» يكمل نفس المحاضرة فقط — مش بيفتح محاضرة جديدة."));
+            form.addView(muted("مفيش محاضرة ظهرت النهاردة ولسه متبقية.
+«إضافي» يكمل نفس المحاضرة فقط — مش بيفتح محاضرة جديدة."));
             myDialog().setTitle("إضافي").setView(form)
                     .setPositiveButton("تمام", null).show();
             return;
@@ -2297,7 +2316,9 @@ public class MainActivity extends Activity {
             nameTv.setTypeface(Typeface.DEFAULT_BOLD);
             form.addView(nameTv);
             form.addView(space(dp(8)));
-            form.addView(muted("المتبقي: " + rem + " د\nالحد الأقصى لـ«إضافي»: أقل من " + maxExtra + " د.\nالمتبقي أكبر من الحد — كمّل من الجدول العادي."));
+            form.addView(muted("المتبقي: " + rem + " د
+الحد الأقصى لـ«إضافي»: أقل من " + maxExtra + " د.
+المتبقي أكبر من الحد — كمّل من الجدول العادي."));
             myDialog().setTitle("إضافي").setView(form)
                     .setPositiveButton("تمام", null).show();
             return;
@@ -2315,9 +2336,11 @@ public class MainActivity extends Activity {
         nameTv.setTypeface(Typeface.DEFAULT_BOLD);
         form.addView(nameTv);
         form.addView(space(dp(8)));
-        form.addView(muted("المتبقي: " + rem + " دقيقة\nلو فيه جلسات بكرة لنفس المحاضرة هتتشال/هتتقلص بعد ما تخلّص."));
+        form.addView(muted("المتبقي: " + rem + " دقيقة
+لو فيه جلسات بكرة لنفس المحاضرة هتتشال/هتتقلص بعد ما تخلّص."));
         form.addView(space(dp(12)));
-        form.addView(muted("أكمل النهارده = تايمر بالمتبقي.\nترحيل لبكرة = بدون تايمر."));
+        form.addView(muted("أكمل النهارده = تايمر بالمتبقي.
+ترحيل لبكرة = بدون تايمر."));
 
         final int remFinal = rem;
         final Planner.Session curFinal = cur;
@@ -2349,7 +2372,11 @@ public class MainActivity extends Activity {
             intent.putExtra(android.content.Intent.EXTRA_SUBJECT, "اقتراح / مشكلة — My Plan");
             String ver = "?";
             try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
-            intent.putExtra(android.content.Intent.EXTRA_TEXT, "اكتب رسالتك هنا:\n\n---\nإصدار التطبيق: " + ver + "\n");
+            intent.putExtra(android.content.Intent.EXTRA_TEXT, "اكتب رسالتك هنا:
+
+---
+إصدار التطبيق: " + ver + "
+");
             startActivity(android.content.Intent.createChooser(intent, "ابعت رسالة"));
         } catch (Exception e) {
             Toast.makeText(this, "مفيش تطبيق بريد على الجهاز", Toast.LENGTH_LONG).show();
@@ -2495,7 +2522,10 @@ public class MainActivity extends Activity {
                 myDialog().setTitle(fm.title == null || fm.title.isEmpty() ? "رسالة" : fm.title)
                         .setMessage((fm.body == null ? "" : fm.body)
                                 + (fm.createdAt != null && !fm.createdAt.isEmpty()
-                                ? "\n\n—\n" + fm.createdAt : ""))
+                                ? "
+
+—
+" + fm.createdAt : ""))
                         .setPositiveButton("حسنًا", (d, w) -> showTab(4))
                         .show();
             });
@@ -2702,11 +2732,20 @@ public class MainActivity extends Activity {
             intent.putExtra(Intent.EXTRA_EMAIL, new String[]{"myplan.feedback@gmail.com"});
             intent.putExtra(Intent.EXTRA_SUBJECT, "تواصل معنا — " + type + " — My Plan");
             intent.putExtra(Intent.EXTRA_TEXT,
-                    "النوع: " + type + "\n\n" + message
-                            + "\n\n---\nuserId=" + userId
-                            + "\ninstallationId=" + installId
-                            + "\nsentAt=" + now
-                            + "\nversion=" + ver + "\n");
+                    "النوع: " + type + "
+
+" + message
+                            + "
+
+---
+userId=" + userId
+                            + "
+installationId=" + installId
+                            + "
+sentAt=" + now
+                            + "
+version=" + ver + "
+");
             startActivity(Intent.createChooser(intent, "إرسال الرسالة"));
             Toast.makeText(this, "تم الحفظ محليًا (في الانتظار للإرسال)", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -2730,7 +2769,8 @@ public class MainActivity extends Activity {
                         .setNegativeButton("إغلاق", null).show();
             } else {
                 myDialog().setTitle("يوم بدون محاضرات")
-                        .setMessage("تمنع المحاضرات يوم " + day + "؟\nينفع تستخدمه للمذاكرة لامتحان.")
+                        .setMessage("تمنع المحاضرات يوم " + day + "؟
+ينفع تستخدمه للمذاكرة لامتحان.")
                         .setPositiveButton("منع المحاضرات", (d2, w) -> {
                             planner.settings.noLectureDays.add(day);
                             planner.save();
@@ -3512,7 +3552,8 @@ public class MainActivity extends Activity {
     private void confirmEraseCompletedTask(Planner.Task t) {
         String nm = t.name == null ? "المهمة" : t.name;
         myDialog().setTitle("مسح المهمة المكتملة")
-                .setMessage("هتتمسح «" + nm + "» نهائيًا مع كل جلساتها من الجدول والبيانات.\nمتأكد؟")
+                .setMessage("هتتمسح «" + nm + "» نهائيًا مع كل جلساتها من الجدول والبيانات.
+متأكد؟")
                 .setPositiveButton("مسح", (d, w) -> permanentlyDeleteTask(t))
                 .setNegativeButton("إلغاء", null)
                 .show();
@@ -3521,7 +3562,8 @@ public class MainActivity extends Activity {
     private void confirmDeleteTask(Planner.Task t) {
         String nm = t == null || t.name == null ? "المهمة" : t.name;
         myDialog().setTitle("مسح المهمة")
-                .setMessage("هتتمسح «" + nm + "» وكل جلساتها من الجدول والبيانات.\nمتأكد؟")
+                .setMessage("هتتمسح «" + nm + "» وكل جلساتها من الجدول والبيانات.
+متأكد؟")
                 .setPositiveButton("مسح", (d, w) -> permanentlyDeleteTask(t))
                 .setNegativeButton("إلغاء", null)
                 .show();
@@ -3839,7 +3881,9 @@ public class MainActivity extends Activity {
         form.addView(label("الأسماء (سطر لكل مهمة)"));
         EditText namesEt = field();
         namesEt.setMinLines(5);
-        namesEt.setHint("إنجليزي 1\nإنجليزي 2\nإنجليزي 3");
+        namesEt.setHint("إنجليزي 1
+إنجليزي 2
+إنجليزي 3");
         form.addView(namesEt);
         form.addView(label("مدة كل مهمة (دقيقة)"));
         EditText durEt = field();
@@ -3864,7 +3908,8 @@ public class MainActivity extends Activity {
                 .setNegativeButton("إلغاء", null)
                 .create();
         dlg.setOnShowListener(di -> dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String[] lines = namesEt.getText().toString().split("\n");
+            String[] lines = namesEt.getText().toString().split("
+");
             java.util.List<String> names = new java.util.ArrayList<>();
             for (String line : lines) { String n = line.trim(); if (!n.isEmpty()) names.add(n); }
             if (names.isEmpty()) { Toast.makeText(this, "اكتب اسم مهمة واحد على الأقل", Toast.LENGTH_SHORT).show(); return; }
@@ -4225,16 +4270,71 @@ public class MainActivity extends Activity {
 
     private String[] guideBodies() {
         return new String[] {
-                "الجدول يُبنى من مهامك (المحاضرات) + الإعدادات (النوم، التجهيز، الراحة، أيام الراحة، الالتزامات) عند الضغط على «إنشاء خطتي».\n\nالتطبيق يحسب المدة المتبقية لكل مهمة، يرتّب المهام حسب الأولوية وقرب الامتحان والقواعد الحالية، ثم يوزّع الجلسات على عدد الأيام الذي تختاره.\n\nعرض «اليوم / الأسبوع / مخصص» يعرض الجلسات فقط ولا يعيد حساب الخطة.",
-                "من صفحة الجدول اضغط «إنشاء خطتي».\nتختار:\n1) عدد الأيام التي توزَّع عليها المهام.\n2) طريقة توزيع المحاضرات (واحدة من الثلاث أدناه).\n\nبعد التأكيد يُعاد بناء الجلسات غير المكتملة/غير المثبتة وفق المنطق الحالي، مع احترام النوم والالتزامات وأيام الراحة والأيام المفضلة/المثبتة إن وُجدت.",
-                "• اليوم: كل جلسات تاريخ اليوم فقط.\n• الأسبوع: من السبت إلى الجمعة للأسابيع الحالية، بأسماء الأيام كاملة.\n• مخصص: نافذة بعدد أيام الخطة التي اخترتها في «إنشاء خطتي» (planDays).\nالتبديل بين العروض لا يغيّر طريقة التوزيع ولا يعيد إنشاء الجدول.",
-                "الاسم داخل التطبيق: «كل يوم جزء من كل محاضرة» (وضع التوزيع 0).\n\nالمعنى الفعلي:\n• يُحسب المتبقي لكل محاضرة.\n• تُقسَّم مدة كل محاضرة على أيام العمل المتاحة قدر الإمكان (توزيع متوازي).\n• في نفس اليوم قد تظهر أجزاء من محاضرات مختلفة.\n• لا يُشترط إنهاء محاضرة كاملة قبل بدء أخرى.\n• يظل يحترم سعة اليوم (وقت متاح بعد النوم/الالتزامات) والقيود الأقوى.",
-                "الاسم داخل التطبيق: «جلسات المحاضرة ورا بعض» (وضع التوزيع 1).\n\nالمعنى الفعلي في الكود الحالي:\n• يُحسب إجمالي المدة المتبقية لكل المحاضرات ÷ عدد أيام العمل ≈ هدف يومي بالدقائق.\n• تُملأ الأيام بالتتابع: تُنهى محاضرة A (كل حصصها المتبقية بالترتيب) قبل الانتقال إلى B، وهكذا.\n• ممنوع نمط تداخل مثل A→B→A لنفس التوزيع.\n• إن لم تكتمل A في يوم، اليوم التالي يكمل A أولًا.\n• الـGap الطبيعي (التزام/صلاة/جلسة أخرى) مسموح؛ التتابع منطقي وليس لصقًا بلا فجوات.\n• أي متبقٍ بسبب قيد يوم يُكمَل في أيام لاحقة بنفس الترتيب.",
-                "الاسم داخل التطبيق: «محاضرة واحدة في اليوم» (وضع التوزيع 2).\n\nالمعنى الفعلي:\n• يُفضَّل تخصيص يوم عمل لمحاضرة واحدة حتى تنتهي مدتها المتبقية في ذلك اليوم (ضمن السعة).\n• لا تُخلط محاضرتان في نفس اليوم طالما ما زالت المحاضرة الحالية تحتاج وقتًا واليوم ما زال مخصصًا لها.\n• إن احتاجت المحاضرة أكثر من يوم، تُكمَل في أيام لاحقة قبل فتح يوم لمحاضرة جديدة حسب القواعد الحالية.\n• يحترم سعة اليوم والقيود الثابتة كباقي الأوضاع.",
-                "مهما كانت طريقة التوزيع، الجدول لا يكسر:\n• وقت الاستيقاظ + التجهيز الصباحي → أول دراسة.\n• وقت النوم → نهاية نافذة الدراسة.\n• أيام الراحة.\n• الالتزامات والأوقات غير المتاحة.\n• الجلسات المكتملة والمثبتة يدويًا (مثل بعد السحب الحر).\n• قيود اليوم المفضل / أيام المادة عند تفعيلها.\n\nطريقة التوزيع تغيّر ترتيب وتعبئة الحصص فقط داخل هذه الحدود.",
-                "بعد إنشاء الجدول تظهر الجلسات في اليوم/الأسبوع/مخصص.\nمن بطاقة الجلسة (بدون تعديل/حذف المهمة من هنا):\n• ابدأ · تم الإنجاز · نقل · المدة · وإعادة جدولة إن كانت فائتة.\nتعديل بيانات المهمة أو حذفها يتم من تبويب «المهام» فقط.",
-                "من المزيد → التخطيط → ساعات المذاكرة يمكنك (اختياريًا) تحديد حد أدنى ومستهدف وحد أقصى لساعات المذاكرة اليومية.\n\n• إن لم تفعّل الميزة: التخطيط يعمل كالمعتاد دون أي سقف إضافي.\n• إن فعّلتها: يُطبَّق سقف ناعم عند الحد الأقصى فقط حتى لا يُحمَّل اليوم بأكثر مما اخترت، مع احترام النوم والالتزامات والراحة.\n• الهدف والحد الأدنى توجيهان مرنان حسب ازدحام اليوم وليسا رقمًا إجباريًا كل يوم.\n• لا تُكسر مواعيد النوم أو الالتزامات بسبب هذه الإعدادات.",
-                "من المزيد → التخطيط → مواعيد نزول المحاضرات تربط المادة بأيام نزول (يمكن أكثر من يوم) ووقت اختياري.\n\n• موعد النزول هدف مرن (Soft) وليس Deadline صارمًا.\n• عند التفعيل فقط: ترتفع أولوية المحاضرات تدريجيًا قبل يوم النزول لاستغلال الأيام الأفرغ.\n• إن لم يُضبط شيء: ترتيب المحاضرات يبقى كما هو في النظام الحالي.\n• عدم إنهاء المحاضرة قبل النزول لا يُفشل الخطة؛ تبقى في المتبقي/Backlog وتُوزَّع لاحقًا.\n• المحاضرات الجديدة لا تلغي القديمة."
+                "الجدول يُبنى من مهامك (المحاضرات) + الإعدادات (النوم، التجهيز، الراحة، أيام الراحة، الالتزامات) عند الضغط على «إنشاء خطتي».
+
+التطبيق يحسب المدة المتبقية لكل مهمة، يرتّب المهام حسب الأولوية وقرب الامتحان والقواعد الحالية، ثم يوزّع الجلسات على عدد الأيام الذي تختاره.
+
+عرض «اليوم / الأسبوع / مخصص» يعرض الجلسات فقط ولا يعيد حساب الخطة.",
+                "من صفحة الجدول اضغط «إنشاء خطتي».
+تختار:
+1) عدد الأيام التي توزَّع عليها المهام.
+2) طريقة توزيع المحاضرات (واحدة من الثلاث أدناه).
+
+بعد التأكيد يُعاد بناء الجلسات غير المكتملة/غير المثبتة وفق المنطق الحالي، مع احترام النوم والالتزامات وأيام الراحة والأيام المفضلة/المثبتة إن وُجدت.",
+                "• اليوم: كل جلسات تاريخ اليوم فقط.
+• الأسبوع: من السبت إلى الجمعة للأسابيع الحالية، بأسماء الأيام كاملة.
+• مخصص: نافذة بعدد أيام الخطة التي اخترتها في «إنشاء خطتي» (planDays).
+التبديل بين العروض لا يغيّر طريقة التوزيع ولا يعيد إنشاء الجدول.",
+                "الاسم داخل التطبيق: «كل يوم جزء من كل محاضرة» (وضع التوزيع 0).
+
+المعنى الفعلي:
+• يُحسب المتبقي لكل محاضرة.
+• تُقسَّم مدة كل محاضرة على أيام العمل المتاحة قدر الإمكان (توزيع متوازي).
+• في نفس اليوم قد تظهر أجزاء من محاضرات مختلفة.
+• لا يُشترط إنهاء محاضرة كاملة قبل بدء أخرى.
+• يظل يحترم سعة اليوم (وقت متاح بعد النوم/الالتزامات) والقيود الأقوى.",
+                "الاسم داخل التطبيق: «جلسات المحاضرة ورا بعض» (وضع التوزيع 1).
+
+المعنى الفعلي في الكود الحالي:
+• يُحسب إجمالي المدة المتبقية لكل المحاضرات ÷ عدد أيام العمل ≈ هدف يومي بالدقائق.
+• تُملأ الأيام بالتتابع: تُنهى محاضرة A (كل حصصها المتبقية بالترتيب) قبل الانتقال إلى B، وهكذا.
+• ممنوع نمط تداخل مثل A→B→A لنفس التوزيع.
+• إن لم تكتمل A في يوم، اليوم التالي يكمل A أولًا.
+• الـGap الطبيعي (التزام/صلاة/جلسة أخرى) مسموح؛ التتابع منطقي وليس لصقًا بلا فجوات.
+• أي متبقٍ بسبب قيد يوم يُكمَل في أيام لاحقة بنفس الترتيب.",
+                "الاسم داخل التطبيق: «محاضرة واحدة في اليوم» (وضع التوزيع 2).
+
+المعنى الفعلي:
+• يُفضَّل تخصيص يوم عمل لمحاضرة واحدة حتى تنتهي مدتها المتبقية في ذلك اليوم (ضمن السعة).
+• لا تُخلط محاضرتان في نفس اليوم طالما ما زالت المحاضرة الحالية تحتاج وقتًا واليوم ما زال مخصصًا لها.
+• إن احتاجت المحاضرة أكثر من يوم، تُكمَل في أيام لاحقة قبل فتح يوم لمحاضرة جديدة حسب القواعد الحالية.
+• يحترم سعة اليوم والقيود الثابتة كباقي الأوضاع.",
+                "مهما كانت طريقة التوزيع، الجدول لا يكسر:
+• وقت الاستيقاظ + التجهيز الصباحي → أول دراسة.
+• وقت النوم → نهاية نافذة الدراسة.
+• أيام الراحة.
+• الالتزامات والأوقات غير المتاحة.
+• الجلسات المكتملة والمثبتة يدويًا (مثل بعد السحب الحر).
+• قيود اليوم المفضل / أيام المادة عند تفعيلها.
+
+طريقة التوزيع تغيّر ترتيب وتعبئة الحصص فقط داخل هذه الحدود.",
+                "بعد إنشاء الجدول تظهر الجلسات في اليوم/الأسبوع/مخصص.
+من بطاقة الجلسة (بدون تعديل/حذف المهمة من هنا):
+• ابدأ · تم الإنجاز · نقل · المدة · وإعادة جدولة إن كانت فائتة.
+تعديل بيانات المهمة أو حذفها يتم من تبويب «المهام» فقط.",
+                "من المزيد → التخطيط → ساعات المذاكرة يمكنك (اختياريًا) تحديد حد أدنى ومستهدف وحد أقصى لساعات المذاكرة اليومية.
+
+• إن لم تفعّل الميزة: التخطيط يعمل كالمعتاد دون أي سقف إضافي.
+• إن فعّلتها: يُطبَّق سقف ناعم عند الحد الأقصى فقط حتى لا يُحمَّل اليوم بأكثر مما اخترت، مع احترام النوم والالتزامات والراحة.
+• الهدف والحد الأدنى توجيهان مرنان حسب ازدحام اليوم وليسا رقمًا إجباريًا كل يوم.
+• لا تُكسر مواعيد النوم أو الالتزامات بسبب هذه الإعدادات.",
+                "من المزيد → التخطيط → مواعيد نزول المحاضرات تربط المادة بأيام نزول (يمكن أكثر من يوم) ووقت اختياري.
+
+• موعد النزول هدف مرن (Soft) وليس Deadline صارمًا.
+• عند التفعيل فقط: ترتفع أولوية المحاضرات تدريجيًا قبل يوم النزول لاستغلال الأيام الأفرغ.
+• إن لم يُضبط شيء: ترتيب المحاضرات يبقى كما هو في النظام الحالي.
+• عدم إنهاء المحاضرة قبل النزول لا يُفشل الخطة؛ تبقى في المتبقي/Backlog وتُوزَّع لاحقًا.
+• المحاضرات الجديدة لا تلغي القديمة."
         };
     }
 
@@ -4410,7 +4510,9 @@ public class MainActivity extends Activity {
             String email=(acc.email!=null&&!acc.email.isEmpty())?acc.email:"—";
             String uid=(acc.userId!=null&&!acc.userId.isEmpty())?acc.userId:"—";
             myDialog().setTitle("الحساب")
-                    .setMessage("الاسم: "+name+"\nالبريد: "+email+"\nمعرّف الحساب: "+uid)
+                    .setMessage("الاسم: "+name+"
+البريد: "+email+"
+معرّف الحساب: "+uid)
                     .setPositiveButton("تسجيل الخروج", (d,w)->showLogoutWithBackupPrompt())
                     .setNegativeButton("إغلاق",null)
                     .show();
@@ -5654,7 +5756,8 @@ public class MainActivity extends Activity {
                 final String sid = scn[0];
                 ch.setOnClickListener(v -> {
                     StringBuilder msg = new StringBuilder();
-                    for (String line : PremiumHub.whatIf(planner, sid, 60)) msg.append(line).append("\n");
+                    for (String line : PremiumHub.whatIf(planner, sid, 60)) msg.append(line).append("
+");
                     myDialog().setTitle("نتيجة التجربة").setMessage(msg.toString())
                             .setPositiveButton("حسنًا", null).show();
                 });
@@ -5948,7 +6051,8 @@ public class MainActivity extends Activity {
             chatLog.add(new String[]{"bot", in.reply});
             pendingIntent = null;
         } else {
-            chatLog.add(new String[]{"bot", "بحلل جدولك الحالي...\n" + in.reply});
+            chatLog.add(new String[]{"bot", "بحلل جدولك الحالي...
+" + in.reply});
         }
         showTab(5);
     }
@@ -6046,7 +6150,8 @@ public class MainActivity extends Activity {
                             BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
                             StringBuilder sb = new StringBuilder();
                             String line;
-                            while ((line = br.readLine()) != null) sb.append(line).append('\n');
+                            while ((line = br.readLine()) != null) sb.append(line).append('
+');
                             br.close();
                             // importJson يتحقق ويبني بيانات مؤقتة قبل أي استبدال
                             planner.importJson(sb.toString());
@@ -7248,7 +7353,9 @@ public class MainActivity extends Activity {
     private void showPlannerDiagnostics() {
         String text;
         if (planner == null || planner.lastPlanningDiag == null) {
-            text = "لا توجد نتيجة تخطيط محفوظة بعد.\n\nاضغط «عدّل خطتي» / إنشاء الجدول مرة، ثم افتح التشخيص مرة أخرى.";
+            text = "لا توجد نتيجة تخطيط محفوظة بعد.
+
+اضغط «عدّل خطتي» / إنشاء الجدول مرة، ثم افتح التشخيص مرة أخرى.";
         } else {
             text = planner.lastPlanningDiag.asText();
         }
@@ -7402,9 +7509,12 @@ public class MainActivity extends Activity {
             StringBuilder sb = new StringBuilder();
             for (com.myplan.app.sync.SyncSelfTest.Case c : cases) {
                 if (c.pass) pass++; else fail++;
-                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("\n");
+                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("
+");
             }
-            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "\n\n");
+            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "
+
+");
             myDialog().setTitle("Cloud Sync Self-Test")
                     .setMessage(sb.toString())
                     .setPositiveButton("حسنًا", null)
@@ -7465,9 +7575,12 @@ public class MainActivity extends Activity {
             StringBuilder sb = new StringBuilder();
             for (com.myplan.app.notifications.NotificationsSelfTest.Case c : cases) {
                 if (c.pass) pass++; else fail++;
-                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("\n");
+                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("
+");
             }
-            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "\n\n");
+            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "
+
+");
             myDialog().setTitle("Notifications Self-Test")
                     .setMessage(sb.toString())
                     .setPositiveButton("حسنًا", null)
@@ -7534,9 +7647,12 @@ public class MainActivity extends Activity {
             StringBuilder sb = new StringBuilder();
             for (com.myplan.app.payments.PaymentsSelfTest.Case c : cases) {
                 if (c.pass) pass++; else fail++;
-                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("\n");
+                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("
+");
             }
-            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "\n\n");
+            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "
+
+");
             myDialog().setTitle("Payments Self-Test")
                     .setMessage(sb.toString())
                     .setPositiveButton("حسنًا", null)
@@ -7593,9 +7709,12 @@ public class MainActivity extends Activity {
             StringBuilder sb = new StringBuilder();
             for (com.myplan.app.ads.AdsSelfTest.Case c : cases) {
                 if (c.pass) pass++; else fail++;
-                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("\n");
+                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("
+");
             }
-            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "\n\n");
+            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "
+
+");
             myDialog().setTitle("Ads Self-Test")
                     .setMessage(sb.toString())
                     .setPositiveButton("حسنًا", null)
@@ -7652,9 +7771,12 @@ public class MainActivity extends Activity {
             StringBuilder sb = new StringBuilder();
             for (com.myplan.app.api.ApiLayerSelfTest.Case c : cases) {
                 if (c.pass) pass++; else fail++;
-                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("\n");
+                sb.append(c.pass ? "✓ " : "✗ ").append(c.name).append(" · ").append(c.detail).append("
+");
             }
-            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "\n\n");
+            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + "
+
+");
             myDialog().setTitle("API Layer Self-Test")
                     .setMessage(sb.toString())
                     .setPositiveButton("حسنًا", null)
@@ -7710,9 +7832,12 @@ public class MainActivity extends Activity {
                 if ("PASS".equals(c.status)) pass++;
                 else if ("FAIL".equals(c.status)) fail++;
                 else other++;
-                sb.append(c.status).append(" · ").append(c.name).append(" · ").append(c.detail).append("\n");
+                sb.append(c.status).append(" · ").append(c.name).append(" · ").append(c.detail).append("
+");
             }
-            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + " OTHER=" + other + "\n\n");
+            sb.insert(0, "PASS=" + pass + " FAIL=" + fail + " OTHER=" + other + "
+
+");
             myDialog().setTitle("Security Self-Test")
                     .setMessage(sb.toString())
                     .setPositiveButton("حسنًا", null)
@@ -7766,18 +7891,26 @@ public class MainActivity extends Activity {
     private void showDevPlannerSnapshot() {
         StringBuilder sb = new StringBuilder();
         sb.append("wake=").append(Planner.minToTime(planner.settings.wakeMin));
-        sb.append(" sleep=").append(Planner.minToTime(planner.settings.sleepMin)).append("\n");
+        sb.append(" sleep=").append(Planner.minToTime(planner.settings.sleepMin)).append("
+");
         sb.append("sessionMin=").append(planner.settings.sessionMin);
-        sb.append(" breakMin=").append(planner.settings.breakMin).append("\n");
-        sb.append("restDays=").append(planner.settings.restDays.size()).append("\n");
+        sb.append(" breakMin=").append(planner.settings.breakMin).append("
+");
+        sb.append("restDays=").append(planner.settings.restDays.size()).append("
+");
         int nld = planner.settings.noLectureDays != null ? planner.settings.noLectureDays.size() : 0;
-        sb.append("noLectureDays=").append(nld).append("\n");
+        sb.append("noLectureDays=").append(nld).append("
+");
         int open = 0;
         for (Planner.Task t : planner.tasks) if (!t.done) open++;
-        sb.append("tasks open=").append(open).append(" / ").append(planner.tasks.size()).append("\n");
-        sb.append("sessions=").append(planner.sessions.size()).append("\n");
-        sb.append("exams=").append(planner.exams.size()).append("\n");
-        sb.append("lectureDistMode=").append(planner.settings.lectureDistMode).append("\n");
+        sb.append("tasks open=").append(open).append(" / ").append(planner.tasks.size()).append("
+");
+        sb.append("sessions=").append(planner.sessions.size()).append("
+");
+        sb.append("exams=").append(planner.exams.size()).append("
+");
+        sb.append("lectureDistMode=").append(planner.settings.lectureDistMode).append("
+");
         AppInfrastructure.log(this, "Planner", "Snapshot shown");
         myDialog().setTitle("Planner constraints")
                 .setMessage(sb.toString())
