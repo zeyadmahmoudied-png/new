@@ -192,6 +192,7 @@ public final class AccountAuth {
      */
     public static void logout(Context c) {
         setSession(c, "");
+        try { com.myplan.app.supabase.SupabaseAuthSession.clear(c); } catch (Exception ignored) {}
         // Keep stable User ID on device for future linking; session is what matters for "logged in"
         AppInfrastructure.log(c, "Account", "local_logout");
     }

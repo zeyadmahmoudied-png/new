@@ -143,8 +143,8 @@ public final class AnnouncementManager {
             SupabaseRepository repo = new SupabaseRepository(c);
             JSONArray out = new JSONArray();
             ApiResult<String> r = repo.httpGet(
-                    "/rest/v1/remote_messages?select=*&is_active=eq.true"
-                            + "&or=(message_type.eq.announcement,message_type.eq.popup)"
+                    "/rest/v1/messages?select=*&is_active=eq.true"
+                            + "&or=(message_type.eq.announcement,message_type.eq.new_feature,message_type.eq.warning,message_type.eq.premium,message_type.eq.maintenance)"
                             + "&order=created_at.desc&limit=40");
             if (r != null && r.isSuccess() && r.data != null) {
                 JSONArray arr = new JSONArray(r.data);

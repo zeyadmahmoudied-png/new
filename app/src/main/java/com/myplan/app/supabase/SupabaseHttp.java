@@ -46,6 +46,9 @@ public final class SupabaseHttp {
         }
         String base = SupabaseConfig.getUrl(app);
         String key = SupabaseConfig.getAnonKey(app);
+        if (SupabaseAuthSession.isSignedIn(app) && SupabaseAuthSession.isExpired(app)) {
+            SupabaseAuthSession.refresh(app);
+        }
         if (key.toLowerCase().contains("service_role")) {
             return ApiResult.validation(0, "Service Role غير مسموح في التطبيق");
         }
@@ -57,7 +60,8 @@ public final class SupabaseHttp {
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(15000);
             conn.setRequestProperty("apikey", key);
-            conn.setRequestProperty("Authorization", "Bearer " + key);
+            String sessionToken = SupabaseAuthSession.accessToken(app);
+            conn.setRequestProperty("Authorization", "Bearer " + (sessionToken.isEmpty() ? key : sessionToken));
             conn.setRequestProperty("Accept", "application/json");
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             if ("POST".equals(method) || "PATCH".equals(method)) {
