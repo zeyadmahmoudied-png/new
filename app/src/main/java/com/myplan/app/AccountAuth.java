@@ -191,7 +191,7 @@ public final class AccountAuth {
      * Ends auth session only. Does NOT delete study data, premium test, backups, or alarms.
      */
     public static void logout(Context c) {
-        setSession(c, "");
+        setSession(c, "");\n        try { com.myplan.app.supabase.SupabaseAuthSession.clear(c); } catch (Exception ignored) {}
         // Keep stable User ID on device for future linking; session is what matters for "logged in"
         AppInfrastructure.log(c, "Account", "local_logout");
     }
