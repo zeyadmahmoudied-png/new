@@ -207,6 +207,22 @@ public final class SupabaseRepository {
             } catch (Exception ignored) {}
             return;
         }
+        // جرّب UUID المحوّل ثم local id ثم installation_id
+        ApiResult<String> r = null;
+        if (!remoteUid.isEmpty()) {
+            r = http.get("/rest/v1/premium_grants?select=*&user_id=eq." + urlEncode(remoteUid) + "&limit=20");
+        }
+        if (r == null || !r.isSuccess() || r.data == null || "[]".equals(r.data.trim())) {
+            if (userId != null && !userId.isEmpty()) {
+                r = http.get("/rest/v1/premium_grants?select=*&user_id=eq." + urlEncode(userId) + "&limit=20");
+            }
+        }
+        if (r == null || !r.isSuccess() || r.data == null || "[]".equals(r.data.trim())) {
+            String inst = AppInfrastructure.getInstallationId(app);
+            r = http.get("/rest/v1/premium_grants?select=*&installation_id=eq." + urlEncode(inst) + "&limit=20");
+        }
+        boolean active = false;
+        JSONArray featureKeys = new JSONArray();
         // Also honor the per-user profile entitlement used by Control Center.
         if (!remoteUid.isEmpty()) {
             try {
@@ -228,22 +244,7 @@ public final class SupabaseRepository {
                 }
             } catch (Exception ignored) {}
         }
-        // جرّب UUID المحوّل ثم local id ثم installation_id
-        ApiResult<String> r = null;
-        if (!remoteUid.isEmpty()) {
-            r = http.get("/rest/v1/premium_grants?select=*&user_id=eq." + urlEncode(remoteUid) + "&limit=20");
-        }
-        if (r == null || !r.isSuccess() || r.data == null || "[]".equals(r.data.trim())) {
-            if (userId != null && !userId.isEmpty()) {
-                r = http.get("/rest/v1/premium_grants?select=*&user_id=eq." + urlEncode(userId) + "&limit=20");
-            }
-        }
-        if (r == null || !r.isSuccess() || r.data == null || "[]".equals(r.data.trim())) {
-            String inst = AppInfrastructure.getInstallationId(app);
-            r = http.get("/rest/v1/premium_grants?select=*&installation_id=eq." + urlEncode(inst) + "&limit=20");
-        }
-        boolean active = false;
-        JSONArray featureKeys = new JSONArray();
+
         if (r != null && r.isSuccess() && r.data != null) {
             try {
                 JSONArray arr = new JSONArray(r.data);
