@@ -207,6 +207,27 @@ public final class SupabaseRepository {
             } catch (Exception ignored) {}
             return;
         }
+        // Also honor the per-user profile entitlement used by Control Center.
+        if (!remoteUid.isEmpty()) {
+            try {
+                ApiResult<String> pr = http.get("/rest/v1/profiles?select=is_premium,premium_expires_at,metadata&id=eq." + urlEncode(remoteUid) + "&limit=1");
+                if (pr.isSuccess() && pr.data != null) {
+                    JSONArray pa = new JSONArray(pr.data);
+                    if (pa.length() > 0) {
+                        JSONObject p = pa.getJSONObject(0);
+                        if (p.optBoolean("is_premium", false)) {
+                            String exp = p.optString("premium_expires_at", "");
+                            if (exp.isEmpty() || !isExpiredIso(exp)) active = true;
+                        }
+                        JSONObject md = p.optJSONObject("metadata");
+                        if (md != null) {
+                            Object pf = md.opt("premium_features");
+                            if (pf != null) appendFeatureKeys(featureKeys, pf);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
         // جرّب UUID المحوّل ثم local id ثم installation_id
         ApiResult<String> r = null;
         if (!remoteUid.isEmpty()) {
@@ -264,6 +285,25 @@ public final class SupabaseRepository {
             snap.put("premium_active", active);
             snap.put("premium_feature_keys", featureKeys);
         } catch (Exception ignored) {}
+    }
+
+    private static void appendFeatureKeys(JSONArray out, Object raw) {
+        try {
+            if (raw instanceof JSONArray) {
+                JSONArray a=(JSONArray)raw;
+                for(int i=0;i<a.length();i++){ String k=a.optString(i,"").trim(); if(!k.isEmpty()) out.put(k); }
+            } else if (raw != null) {
+                String s=String.valueOf(raw).trim();
+                if(s.startsWith("[")) appendFeatureKeys(out,new JSONArray(s));
+                else if(!s.isEmpty()) out.put(s);
+            }
+        } catch(Exception ignored) {}
+    }
+
+    private static boolean isExpiredIso(String value) {
+        if(value==null || value.trim().isEmpty()) return false;
+        try { return java.time.Instant.parse(value).toEpochMilli() < System.currentTimeMillis(); }
+        catch(Exception e) { return false; }
     }
 
     private static boolean isGrantExpired(JSONObject row, long nowMs) {
