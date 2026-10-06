@@ -157,11 +157,20 @@ public class LoginActivity extends Activity {
                 new Thread(() -> {
                     try {
                         if (com.myplan.app.supabase.SupabaseConfig.isConfigured(appCtx)) {
-                            // Keep the existing local account flow, then bridge the same credentials
-                            // to Supabase Auth so RLS/RPC can identify the real user.
-                            com.myplan.app.supabase.SupabaseAuthSession.ensureSignedIn(
-                                    appCtx, authEmail, authPassword, reg,
-                                    acc != null ? acc.displayName : "");
+                            boolean supabaseOk =
+                                    com.myplan.app.supabase.SupabaseAuthSession.ensureSignedIn(
+                                            appCtx, authEmail, authPassword, reg,
+                                            acc != null ? acc.displayName : "");
+                            if (!supabaseOk) {
+                                runOnUiThread(() -> Toast.makeText(
+                                        LoginActivity.this,
+                                        reg
+                                                ? "تعذر إنشاء حسابك على السيرفر. لو تأكيد البريد مفعّل، افتح رسالة التأكيد ثم سجّل الدخول."
+                                                : "تعذر تسجيل الدخول إلى حساب السيرفر. تأكد من البريد وكلمة المرور.",
+                                        Toast.LENGTH_LONG).show());
+                                AccountAuth.logout(LoginActivity.this);
+                                return;
+                            }
                             com.myplan.app.supabase.SupabaseRepository repo =
                                     new com.myplan.app.supabase.SupabaseRepository(appCtx);
                             if (acc != null) {
