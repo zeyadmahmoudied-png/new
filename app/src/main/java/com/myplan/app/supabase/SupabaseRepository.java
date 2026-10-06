@@ -460,33 +460,45 @@ public final class SupabaseRepository {
      * لا تظهر في inbox المطور داخل التطبيق.
      */
     public ApiResult<Void> submitMessage(String type, String message, String userId, String installationId) {
-        if (!isReady()) return ApiResult.notConfigured();
+        if (!isReady() || !SupabaseAuthSession.isSignedIn(app)) return ApiResult.notConfigured();
         try {
-            JSONObject body = new JSONObject();
-            body.put("title", type == null || type.isEmpty() ? "تواصل" : type);
-            body.put("body", message == null ? "" : message);
-            body.put("message_type", "general");
-            body.put("target_type", "support");
-            body.put("is_active", true);
-            String localUid = userId;
-            if (localUid == null || localUid.isEmpty()) {
-                localUid = AccountAuth.getSessionUserId(app);
+            String uid = SupabaseAuthSession.userId(app);
+            String subject = type == null || type.trim().isEmpty() ? "تواصل" : type.trim();
+
+            ApiResult<String> existing = http.get(
+                    "/rest/v1/conversations?select=id&user_id=eq." + urlEncode(uid)
+                            + "&status=eq.open&order=updated_at.desc&limit=1");
+            String conversationId = "";
+            if (existing.isSuccess() && existing.data != null) {
+                JSONArray a = new JSONArray(existing.data);
+                if (a.length() > 0) conversationId = a.getJSONObject(0).optString("id", "");
             }
-            if (localUid == null || localUid.isEmpty()) {
-                localUid = AppInfrastructure.getUserId(app);
+
+            if (conversationId.isEmpty()) {
+                JSONObject conversation = new JSONObject();
+                conversation.put("user_id", uid);
+                conversation.put("subject", subject);
+                conversation.put("type", "support");
+                conversation.put("status", "open");
+                ApiResult<String> created = http.postPrefer(
+                        "/rest/v1/conversations", "[" + conversation + "]", "return=representation");
+                if (!created.isSuccess() || created.data == null) return ApiResult.unknown(created.message);
+                JSONArray a = new JSONArray(created.data);
+                if (a.length() == 0) return ApiResult.unknown("conversation create failed");
+                conversationId = a.getJSONObject(0).optString("id", "");
             }
-            if (localUid != null && !localUid.isEmpty()) {
-                body.put("target_id", remoteUserUuid(localUid));
-            }
-            ApiResult<String> r = http.post("/rest/v1/messages", "[" + body + "]");
-            if (r.isSuccess()) return ApiResult.success(null);
-            body.remove("target_type");
-            body.remove("target_id");
-            r = http.post("/rest/v1/remote_messages", "[" + body + "]");
-            if (r.isSuccess()) return ApiResult.success(null);
-            return ApiResult.unknown(r.message);
+
+            JSONObject msg = new JSONObject();
+            msg.put("conversation_id", conversationId);
+            msg.put("sender_id", uid);
+            msg.put("sender_type", "user");
+            msg.put("content", message == null ? "" : message);
+            msg.put("is_read", true);
+            ApiResult<String> sent = http.post("/rest/v1/conversation_messages", "[" + msg + "]");
+            if (sent.isSuccess()) return ApiResult.success(null);
+            return ApiResult.unknown(sent.message);
         } catch (Exception e) {
-            return ApiResult.unknown("submit message failed");
+            return ApiResult.unknown("conversation message failed");
         }
     }
 
