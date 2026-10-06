@@ -340,11 +340,7 @@ public final class SupabaseRepository {
     public ApiResult<Void> registerAppUser(AccountAuth.Account account) {
         if (!isReady()) return ApiResult.notConfigured();
         String uid = SupabaseAuthSession.userId(app);
-        if (uid == null || uid.isEmpty()) {
-            String local = account == null ? "" : account.userId;
-            uid = remoteUserUuid(local);
-        }
-        if (uid == null || uid.isEmpty()) return ApiResult.validation(0, "لا يوجد حساب");
+        if (uid == null || uid.isEmpty()) return ApiResult.auth(401, "لم يتم إنشاء جلسة Supabase للمستخدم");
         try {
             JSONObject body = new JSONObject();
             body.put("id", uid);
