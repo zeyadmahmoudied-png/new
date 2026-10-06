@@ -403,46 +403,38 @@ public final class SupabaseRepository {
      * لا يجلب contact / user_to_dev / support.
      */
     public ApiResult<JSONArray> fetchInboxMessages() {
-        if (!isReady()) return ApiResult.notConfigured();
+        if (!isReady() || !SupabaseAuthSession.isSignedIn(app)) return ApiResult.notConfigured();
         try {
-            String localUid = AccountAuth.getSessionUserId(app);
-            if (localUid == null || localUid.isEmpty()) {
-                localUid = AppInfrastructure.getUserId(app);
-            }
-            String remoteId = (localUid == null || localUid.isEmpty())
-                    ? "" : remoteUserUuid(localUid);
-            String q;
-            if (!remoteId.isEmpty()) {
-                q = "/rest/v1/messages?select=id,title,body,created_at,target_type,target_id,is_active,message_type"
-                        + "&is_active=eq.true"
-                        + "&message_type=eq.in_app"
-                        + "&or=(target_type.eq.all,and(target_type.eq.user,target_id.eq." + remoteId + "))"
-                        + "&order=created_at.desc&limit=50";
-            } else {
-                q = "/rest/v1/remote_messages?select=id,title,body,created_at,target_type,target_id,is_active,message_type"
-                        + "&is_active=eq.true"
-                        + "&message_type=eq.in_app"
-                        + "&target_type=eq.all"
-                        + "&order=created_at.desc&limit=50";
-            }
+            String uid = SupabaseAuthSession.userId(app);
+            String q = "/rest/v1/messages?select=id,title,body,content,created_at,target_type,target_id,target_ids,is_active,message_type,type"
+                    + "&is_active=eq.true&order=created_at.desc&limit=100";
             ApiResult<String> r = http.get(q);
             if (!r.isSuccess()) return ApiResult.unknown(r.message);
             JSONArray arr = new JSONArray(r.data == null ? "[]" : r.data);
             JSONArray filtered = new JSONArray();
-            for (int i = 0; i < arr.length(); i++) {
+            boolean premium = RemoteControlCache.remotePremiumActive(app);
+            for (int i=0;i<arr.length();i++) {
                 JSONObject o = arr.getJSONObject(i);
-                if (o.has("is_active") && !o.optBoolean("is_active", true)) continue;
-                String mt = o.optString("message_type", "");
-                if (!"in_app".equalsIgnoreCase(mt)) continue;
-                String tt = o.optString("target_type", "");
-                String tid = o.optString("target_id", "");
-                if ("all".equalsIgnoreCase(tt)) {
-                    filtered.put(o);
-                } else if ("user".equalsIgnoreCase(tt)
-                        && !remoteId.isEmpty()
-                        && remoteId.equalsIgnoreCase(tid)) {
-                    filtered.put(o);
+                String type = o.optString("message_type", o.optString("type", "general"));
+                if ("maintenance".equalsIgnoreCase(type)) continue;
+                String target = o.optString("target_type", "all").toLowerCase();
+                boolean match = "all".equals(target)
+                        || ("free".equals(target) && !premium)
+                        || ("premium".equals(target) && premium);
+                if ("users".equals(target) || "user".equals(target)) {
+                    JSONArray ids = o.optJSONArray("target_ids");
+                    if (ids != null) for (int j=0;j<ids.length();j++)
+                        if (uid.equalsIgnoreCase(ids.optString(j, ""))) { match=true; break; }
+                    String tid=o.optString("target_id","");
+                    if (uid.equalsIgnoreCase(tid)) match=true;
                 }
+                if ("devices".equals(target)) {
+                    String inst=AppInfrastructure.getInstallationId(app);
+                    JSONArray ids=o.optJSONArray("target_ids");
+                    if (ids!=null) for(int j=0;j<ids.length();j++)
+                        if(inst.equalsIgnoreCase(ids.optString(j,""))) {match=true;break;}
+                }
+                if (match) filtered.put(o);
             }
             return ApiResult.success(filtered);
         } catch (Exception e) {
