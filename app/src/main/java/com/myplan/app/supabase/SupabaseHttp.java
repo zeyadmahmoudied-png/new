@@ -45,7 +45,7 @@ public final class SupabaseHttp {
             return ApiResult.notConfigured();
         }
         String base = SupabaseConfig.getUrl(app);
-        String key = SupabaseConfig.getAnonKey(app);
+        String key = SupabaseConfig.getAnonKey(app);\n        if (SupabaseAuthSession.isSignedIn(app) && SupabaseAuthSession.isExpired(app)) {\n            SupabaseAuthSession.refresh(app);\n        }
         if (key.toLowerCase().contains("service_role")) {
             return ApiResult.validation(0, "Service Role غير مسموح في التطبيق");
         }
