@@ -168,7 +168,7 @@ public class MainActivity extends Activity {
         // Remote Control (Supabase) — لا يمس Planner
         content.post(this::applyRemoteControlGates);
         content.post(this::applyAdminBanGates);
-        com.myplan.app.supabase.RemoteSyncCoordinator.syncAsync(this);
+        com.myplan.app.supabase.RemoteSyncCoordinator.syncAsync(this);\n        // Apply freshly synced Control Center gates after the background sync completes.\n        content.postDelayed(this::applyRemoteControlGates, 1800);
         // تحديث الحظر + الرسائل + Announcements في الخلفية بعد الدخول
         new Thread(() -> {
             try {
