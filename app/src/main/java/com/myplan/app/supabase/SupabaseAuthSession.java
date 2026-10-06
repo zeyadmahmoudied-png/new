@@ -57,6 +57,8 @@ public final class SupabaseAuthSession {
 
         if (!accessToken(c).isEmpty() && refresh(c)) return true;
 
+        // For login, require a real Supabase session. For registration, create the
+        // Auth user first; never silently fall back to the local-only identity.
         JSONObject result = authRequest(
                 c,
                 signUp ? "/auth/v1/signup" : "/auth/v1/token?grant_type=password",
