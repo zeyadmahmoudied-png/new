@@ -145,7 +145,7 @@ public final class SupabaseRepository {
                 if (k.contains("banner")) snap.put("banner_ads", en);
                 if (k.contains("interstitial")) snap.put("interstitial_ads", en);
                 if (k.contains("rewarded")) snap.put("rewarded_ads", en);
-                if (k.equals("ads") || k.equals("premium")) snap.put(k, en);
+                if (k.equals("ads") || k.equals("premium")) snap.put(k, en);\n                if (k.contains("kill_switch") || k.equals("killswitch")) snap.put("kill_switch", en);\n                if (k.contains("maintenance")) snap.put("maintenance", en);
             }
             snap.put("feature_flags", flags);
         } catch (Exception ignored) {}
