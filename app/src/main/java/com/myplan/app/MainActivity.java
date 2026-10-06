@@ -2645,8 +2645,9 @@ public class MainActivity extends Activity {
             return;
         }
 
-        if (!com.myplan.app.supabase.SupabaseConfig.isConfigured(this)) {
-            openContactEmailFallback(type, message, userId, installId, now);
+        if (!com.myplan.app.supabase.SupabaseConfig.isConfigured(this)
+                || !com.myplan.app.supabase.SupabaseAuthSession.isSignedIn(this)) {
+            Toast.makeText(this, "تعذر الإرسال للسيرفر. تم حفظ الرسالة محليًا وستتم إعادة المحاولة عند عودة الاتصال.", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -2670,7 +2671,9 @@ public class MainActivity extends Activity {
                     contactUsPage = 0;
                     if (showingContactUs) showTab(4);
                 } else {
-                    openContactEmailFallback(type, message, userId, installId, now);
+                    Toast.makeText(MainActivity.this,
+                            "تعذر إرسال الرسالة للسيرفر. تم حفظها محليًا وستتم إعادة المحاولة.",
+                            Toast.LENGTH_LONG).show();
                 }
             });
         }, "contact-send").start();
