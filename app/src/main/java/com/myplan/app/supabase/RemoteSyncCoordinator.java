@@ -38,7 +38,8 @@ public final class RemoteSyncCoordinator {
         android.util.Log.d("RemoteSync", "REMOTE_SYNC_START");
         ApiResult<JSONObject> fetched = repo.fetchAndCacheControlState();
         if (fetched.isSuccess()) {
-            mergeOperationalControlState(app);\n            applyFeatureFlagsToLocal(app);
+            mergeOperationalControlState(app);
+            applyFeatureFlagsToLocal(app);
             applyRemotePremiumGrant(app);
             flushPendingContactMessages(app, repo);
             AnnouncementManager.fetchAndCache(app);
