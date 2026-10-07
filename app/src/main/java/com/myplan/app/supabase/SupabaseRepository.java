@@ -45,6 +45,7 @@ public final class SupabaseRepository {
             mergeAppVersions(snap);
             mergeAdSettings(snap);
             mergePremiumForCurrentUser(snap);
+            mergeRemoteMessages(snap);
 
             RemoteControlCache.saveSnapshot(app, snap);
             return ApiResult.success(snap);
@@ -504,6 +505,70 @@ public final class SupabaseRepository {
         } catch (Exception e) {
             return ApiResult.unknown("submit message failed");
         }
+    }
+
+    /** يجلب رسائل Control Center التي يجب أن تظهر داخل التطبيق أو كإشعار. */
+    private void mergeRemoteMessages(JSONObject snap) {
+        try {
+            String localUid = AccountAuth.getSessionUserId(app);
+            if (localUid == null || localUid.isEmpty()) localUid = AppInfrastructure.getUserId(app);
+            String remoteId = (localUid == null || localUid.isEmpty()) ? "" : remoteUserUuid(localUid);
+            String base = "/rest/v1/remote_messages?select=*&is_active=eq.true"
+                    + "&order=priority.desc,created_at.desc&limit=100";
+            ApiResult<String> r = http.get(base);
+            if (!r.isSuccess() || r.data == null) return;
+
+            JSONArray src = new JSONArray(r.data);
+            JSONArray inbox = new JSONArray();
+            JSONArray push = new JSONArray();
+            long now = System.currentTimeMillis();
+
+            for (int i = 0; i < src.length(); i++) {
+                JSONObject o = src.getJSONObject(i);
+                if (!o.optBoolean("is_active", true)) continue;
+
+                long start = parseRemoteTime(o, "starts_at");
+                long end = parseRemoteTime(o, "expires_at");
+                if (start > 0 && now < start) continue;
+                if (end > 0 && now > end) continue;
+
+                String type = o.optString("message_type", "").trim().toLowerCase();
+                String target = o.optString("target_type", "all").trim().toLowerCase();
+                String targetId = o.optString("target_id", "").trim();
+
+                boolean audienceOk = "all".equals(target);
+                if ("user".equals(target) && !remoteId.isEmpty()) {
+                    audienceOk = remoteId.equalsIgnoreCase(targetId)
+                            || (localUid != null && localUid.equalsIgnoreCase(targetId));
+                } else if ("device".equals(target)) {
+                    audienceOk = AppInfrastructure.getInstallationId(app).equalsIgnoreCase(targetId);
+                }
+                if (!audienceOk) continue;
+
+                if ("in_app".equals(type) || "announcement".equals(type)
+                        || "maintenance".equals(type) || "update".equals(type)
+                        || "warning".equals(type)) {
+                    inbox.put(o);
+                }
+                if ("push".equals(type)) push.put(o);
+            }
+
+            snap.put("remote_messages", inbox);
+            snap.put("remote_push_messages", push);
+        } catch (Exception ignored) {}
+    }
+
+    private static long parseRemoteTime(JSONObject o, String key) {
+        try {
+            if (!o.has(key) || o.isNull(key)) return 0;
+            String s = o.optString(key, "");
+            if (s.isEmpty()) return 0;
+            try { return java.time.Instant.parse(s).toEpochMilli(); } catch (Exception ignored) {}
+            long n = o.optLong(key, 0);
+            if (n > 1_000_000_000_000L) return n;
+            if (n > 1_000_000_000L) return n * 1000L;
+        } catch (Exception ignored) {}
+        return 0;
     }
 
     /** الأعمدة المؤكدة: message. RLS يمنع INSERT لـ anon حاليًا. */
