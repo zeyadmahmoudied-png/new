@@ -1,6 +1,7 @@
 # CI build workflow
 # CI trigger check
 # APK build requested 2026-10-07
+# Linked MyPlan/Supabase fixed build
 name: Build My Plan APK
 
 on:
