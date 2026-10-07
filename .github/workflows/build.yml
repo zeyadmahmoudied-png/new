@@ -5,7 +5,7 @@ name: Build My Plan APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, rebuild-remote-control]
   workflow_dispatch:
     inputs:
       build_type:
