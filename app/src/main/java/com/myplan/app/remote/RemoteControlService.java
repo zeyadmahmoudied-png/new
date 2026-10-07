@@ -81,17 +81,16 @@ public final class RemoteControlService {
             JSONObject profile = first(http.get("/rest/v1/app_users?id=eq." + enc(remoteUserId)
                     + "&select=id,status,email,display_name&limit=1"));
             if (profile != null) {
-                String status = profile.optString("status", "active");
-                out.accountBanned = "banned".equalsIgnoreCase(status)
-                        || "disabled".equalsIgnoreCase(status);
+                String status = profile.optBoolean("banned", false) || "banned".equalsIgnoreCase(profile.optString("status", ""))
+                        || "disabled".equalsIgnoreCase(profile.optString("status", ""));
                 
             }
 
-            JSONObject device = first(http.get("/rest/v1/devices?installation_id=eq."
+            JSONObject device = first(http.get("/rest/v1/device_controls?installation_id=eq."
                     + enc(AppInfrastructure.getInstallationId(app))
-                    + "&select=status&limit=1"));
+                    + "&select=blocked&limit=1"));
             if (device != null) {
-                out.deviceBlocked = "blocked".equalsIgnoreCase(device.optString("status", ""));
+                out.deviceBlocked = device.optBoolean("blocked", false);
             }
 
             readMaintenance(http, snapshot);
