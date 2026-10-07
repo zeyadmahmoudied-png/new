@@ -165,11 +165,21 @@ public class MainActivity extends Activity {
         showTab(0);
         // بعد بناء الواجهة: فتح Smart Recovery من إشعار فائتة إن وُجد
         content.post(() -> handleOpenMissedFromIntent(getIntent()));
-        // Remote Control (Supabase) — لا يمس Planner
-        content.post(this::applyRemoteControlGates);
-        content.post(this::applyAdminBanGates);
-        com.myplan.app.supabase.RemoteSyncCoordinator.syncAsync(this);
-        // تحديث الحظر + الرسائل + Announcements في الخلفية بعد الدخول
+        // Remote Control (Supabase) — لا يمس Planner.
+        // Fetch first, then apply the gates so a newly changed Control Center state is enforced on this launch.
+        content.post(() -> {
+            new Thread(() -> {
+                try {
+                    com.myplan.app.supabase.RemoteSyncCoordinator.doSync(getApplicationContext());
+                    com.myplan.app.supabase.AdminBanGate.refresh(getApplicationContext());
+                } catch (Exception ignored) {}
+                runOnUiThread(() -> {
+                    applyRemoteControlGates();
+                    applyAdminBanGates();
+                });
+            }, "remote-control-initial-sync").start();
+        });
+        // تحديث الرسائل + Announcements في الخلفية بعد الدخول
         new Thread(() -> {
             try {
                 com.myplan.app.supabase.AdminBanGate.refresh(getApplicationContext());
@@ -312,7 +322,7 @@ public class MainActivity extends Activity {
             if (com.myplan.app.supabase.RemoteControlCache.maintenance(this)) {
                 myDialog().setTitle("صيانة")
                         .setMessage(com.myplan.app.supabase.RemoteControlCache.maintenanceMessage(this) + "\n\nبياناتك لم تُحذف.")
-                        .setCancelable(true)
+                        .setCancelable(false)
                         .setPositiveButton("حسناً", null)
                         .show();
             }
