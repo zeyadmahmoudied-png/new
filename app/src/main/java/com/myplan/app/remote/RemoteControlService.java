@@ -205,7 +205,7 @@ public final class RemoteControlService {
                 String key = first(row, "config_key", "key", "name", "");
                 if (key.isEmpty()) continue;
                 Object value = row.has("config_value") ? row.opt("config_value")
-                        : row.opt("value", JSONObject.NULL);
+                        : row.opt("value");
                 cfg.put(key, value == null ? JSONObject.NULL : value);
                 if ("maintenance_enabled".equals(key)) s.put("maintenance_enabled", asBool(value));
                 if ("maintenance_message".equals(key)) s.put("maintenance_message", String.valueOf(value));
