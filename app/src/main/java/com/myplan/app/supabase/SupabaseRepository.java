@@ -432,50 +432,54 @@ public final class SupabaseRepository {
      */
     public ApiResult<JSONArray> fetchInboxMessages() {
         if (!isReady()) return ApiResult.notConfigured();
+        JSONArray out = new JSONArray();
         try {
-            String localUid = AccountAuth.getSessionUserId(app);
-            if (localUid == null || localUid.isEmpty()) {
-                localUid = AppInfrastructure.getUserId(app);
-            }
-            String remoteId = (localUid == null || localUid.isEmpty())
-                    ? "" : remoteUserUuid(localUid);
-            String q;
-            if (!remoteId.isEmpty()) {
-                q = "/rest/v1/remote_messages?select=id,title,body,created_at,target_type,target_id,is_active,message_type"
-                        + "&is_active=eq.true"
-                        + "&message_type=eq.in_app"
-                        + "&or=(target_type.eq.all,and(target_type.eq.user,target_id.eq." + remoteId + "))"
-                        + "&order=created_at.desc&limit=50";
-            } else {
-                q = "/rest/v1/remote_messages?select=id,title,body,created_at,target_type,target_id,is_active,message_type"
-                        + "&is_active=eq.true"
-                        + "&message_type=eq.in_app"
-                        + "&target_type=eq.all"
-                        + "&order=created_at.desc&limit=50";
-            }
-            ApiResult<String> r = http.get(q);
-            if (!r.isSuccess()) return ApiResult.unknown(r.message);
-            JSONArray arr = new JSONArray(r.data == null ? "[]" : r.data);
-            JSONArray filtered = new JSONArray();
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.getJSONObject(i);
-                if (o.has("is_active") && !o.optBoolean("is_active", true)) continue;
-                String mt = o.optString("message_type", "");
-                if (!"in_app".equalsIgnoreCase(mt)) continue;
-                String tt = o.optString("target_type", "");
-                String tid = o.optString("target_id", "");
-                if ("all".equalsIgnoreCase(tt)) {
-                    filtered.put(o);
-                } else if ("user".equalsIgnoreCase(tt)
-                        && !remoteId.isEmpty()
-                        && remoteId.equalsIgnoreCase(tid)) {
-                    filtered.put(o);
+            String inst = AppInfrastructure.getInstallationId(app);
+            JSONObject b = new JSONObject().put("p_installation_id", inst);
+            ApiResult<String> chat = http.post("/rest/v1/rpc/myplan_get_support_messages", b.toString());
+            if (chat.isSuccess() && chat.data != null) {
+                JSONArray a = new JSONArray(chat.data);
+                for (int i=0;i<a.length();i++) {
+                    JSONObject x=a.getJSONObject(i);
+                    JSONObject m=new JSONObject();
+                    m.put("id",x.optLong("id",0));
+                    m.put("title","محادثة الدعم");
+                    m.put("body",("admin".equalsIgnoreCase(x.optString("sender_type",""))
+                            ? "الدعم: " : "أنت: ") + x.optString("body",""));
+                    m.put("created_at",x.optString("created_at",""));
+                    m.put("target_type","conversation");
+                    m.put("is_active",true);
+                    m.put("message_type","in_app");
+                    m.put("sender_type",x.optString("sender_type",""));
+                    out.put(m);
                 }
             }
-            return ApiResult.success(filtered);
-        } catch (Exception e) {
-            return ApiResult.unknown("inbox fetch failed");
-        }
+            // Keep broadcast announcements/in-app messages in the same Inbox.
+            String localUid = AccountAuth.getSessionUserId(app);
+            if (localUid == null || localUid.isEmpty()) localUid = AppInfrastructure.getUserId(app);
+            String remoteId = (localUid == null || localUid.isEmpty()) ? "" : remoteUserUuid(localUid);
+            String q = "/rest/v1/remote_messages?select=id,title,body,created_at,target_type,target_id,is_active,message_type"
+                    + "&is_active=eq.true&message_type=eq.in_app"
+                    + (remoteId.isEmpty()
+                        ? "&target_type=eq.all"
+                        : "&or=(target_type.eq.all,and(target_type.eq.user,target_id.eq."+remoteId+"))")
+                    + "&order=created_at.desc&limit=50";
+            ApiResult<String> r=http.get(q);
+            if(r.isSuccess() && r.data!=null){
+                JSONArray a=new JSONArray(r.data);
+                for(int i=0;i<a.length();i++) out.put(a.getJSONObject(i));
+            }
+            return ApiResult.success(out);
+        } catch(Exception e) { return ApiResult.unknown("inbox fetch failed"); }
+    }
+
+    public ApiResult<Void> markSupportMessagesRead() {
+        if (!isReady()) return ApiResult.notConfigured();
+        try {
+            JSONObject b=new JSONObject().put("p_installation_id",AppInfrastructure.getInstallationId(app));
+            ApiResult<String> r=http.post("/rest/v1/rpc/myplan_mark_support_read",b.toString());
+            return r.isSuccess()?ApiResult.success(null):ApiResult.unknown(r.message);
+        } catch(Exception e){return ApiResult.unknown("mark support read failed");}
     }
 
     /** حذف رسالة من remote_messages. لا يخفي محليًا عند الفشل. */
@@ -498,6 +502,18 @@ public final class SupabaseRepository {
     public ApiResult<Void> submitMessage(String type, String message, String userId, String installationId) {
         if (!isReady()) return ApiResult.notConfigured();
         try {
+            // Primary contract: real two-way support conversation.
+            JSONObject rpc = new JSONObject();
+            rpc.put("p_installation_id", installationId == null || installationId.isEmpty()
+                    ? AppInfrastructure.getInstallationId(app) : installationId);
+            String uid = userId;
+            if (uid == null || uid.isEmpty()) uid = AccountAuth.getSessionUserId(app);
+            if (uid == null || uid.isEmpty()) uid = AppInfrastructure.getUserId(app);
+            rpc.put("p_user_id", uid == null || uid.isEmpty() ? JSONObject.NULL : remoteUserUuid(uid));
+            rpc.put("p_body", message == null ? "" : message);
+            ApiResult<String> chat = http.post("/rest/v1/rpc/myplan_send_support_message", rpc.toString());
+            if (chat.isSuccess()) return ApiResult.success(null);
+
             JSONObject body = new JSONObject();
             body.put("title", type == null || type.isEmpty() ? "تواصل" : type);
             body.put("body", message == null ? "" : message);
