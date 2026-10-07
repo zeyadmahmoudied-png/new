@@ -98,7 +98,7 @@ public final class RemoteControlService {
             readRemoteConfig(http, snapshot);
             readVersions(http, snapshot);
             readPremium(http, snapshot, remoteUserId);
-            readAnnouncements(http, snapshot);
+            readAnnouncements(http, snapshot, remoteUserId);
 
             out.maintenance = snapshot.optBoolean("maintenance_enabled", false);
             out.maintenanceMessage = snapshot.optString("maintenance_message",
@@ -262,7 +262,7 @@ public final class RemoteControlService {
         } catch (Throwable ignored) {}
     }
 
-    private static void readAnnouncements(SupabaseHttp http, JSONObject s) {
+    private static void readAnnouncements(SupabaseHttp http, JSONObject s, String uid) {
         try {
             ApiResult<String> r = http.get("/rest/v1/remote_messages?select=*&is_active=eq.true"
                     + "&message_type=in.(announcement,maintenance,update,new_feature,warning,in_app)"
