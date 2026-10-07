@@ -144,8 +144,8 @@ public final class AnnouncementManager {
             JSONArray out = new JSONArray();
             ApiResult<String> r = repo.httpGet(
                     "/rest/v1/remote_messages?select=*&is_active=eq.true"
-                            + "&or=(message_type.eq.announcement,message_type.eq.popup)"
-                            + "&order=created_at.desc&limit=40");
+                            + "&or=(message_type.eq.announcement,message_type.eq.popup,message_type.eq.maintenance,message_type.eq.update,message_type.eq.new_feature,message_type.eq.warning,message_type.eq.premium,message_type.eq.general)"
+                            + "&order=priority.desc,created_at.desc&limit=80");
             if (r != null && r.isSuccess() && r.data != null) {
                 JSONArray arr = new JSONArray(r.data);
                 for (int i = 0; i < arr.length(); i++) out.put(arr.getJSONObject(i));
@@ -158,8 +158,20 @@ public final class AnnouncementManager {
                     for (int i = 0; i < arr.length(); i++) out.put(arr.get(i));
                 }
             }
+
+            // إزالة التكرار إذا جاءت الرسالة من remote_messages ومن snapshot معًا.
+            JSONArray unique = new JSONArray();
+            java.util.HashSet<String> seenIds = new java.util.HashSet<>();
+            for (int i = 0; i < out.length(); i++) {
+                JSONObject item = out.optJSONObject(i);
+                if (item == null) continue;
+                String id = firstNonEmpty(item, "id", "announcement_id");
+                if (id.isEmpty()) id = item.toString();
+                if (seenIds.add(id)) unique.put(item);
+            }
+
             sp(c).edit()
-                    .putString(KEY_CACHE, out.toString())
+                    .putString(KEY_CACHE, unique.toString())
                     .putLong(KEY_CACHE_AT, System.currentTimeMillis())
                     .apply();
         } catch (Exception ignored) {}
