@@ -14,7 +14,7 @@ import org.json.JSONObject;
  * لا تُستدعى من Planner.
  *
  * الجداول المتوقعة (من Control Center) — تُقرأ إن وُجدت فقط:
- * remote_config, feature_flags, premium_grants, devices, messages, error_logs, ad_settings, app_versions
+ * remote_config, feature_flags, premium_grants, devices, messages, error_logs, ads_config, app_versions
  */
 public final class SupabaseRepository {
     private final Context app;
@@ -201,19 +201,37 @@ public final class SupabaseRepository {
         } catch (Exception ignored) {}
     }
 
-    private void mergeAdSettings(JSONObject snap) {
-        // جدول ad_settings قد يكون فارغًا؛ الإعدادات الأساسية من remote_config.ad_settings
-        ApiResult<String> r = http.get("/rest/v1/ad_settings?select=*&limit=20");
+    private void mergeMaintenanceControls(JSONObject snap) {
+        ApiResult<String> r = http.get("/rest/v1/maintenance_settings?select=is_enabled,message,starts_at,ends_at&limit=1");
         if (!r.isSuccess() || r.data == null) return;
         try {
             JSONArray arr = new JSONArray(r.data);
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject row = arr.getJSONObject(i);
-                if (row.has("ads_enabled")) snap.put("ads", row.optBoolean("ads_enabled", false));
-                if (row.has("banner_enabled")) snap.put("banner_ads", row.optBoolean("banner_enabled", false));
-                if (row.has("interstitial_enabled")) snap.put("interstitial_ads", row.optBoolean("interstitial_enabled", false));
-                if (row.has("rewarded_enabled")) snap.put("rewarded_ads", row.optBoolean("rewarded_enabled", false));
-            }
+            if (arr.length() == 0) return;
+            JSONObject row = arr.getJSONObject(0);
+            boolean enabled = row.optBoolean("is_enabled", false);
+            long now = System.currentTimeMillis();
+            long start = parseRemoteTime(row, "starts_at");
+            long end = parseRemoteTime(row, "ends_at");
+            if (start > 0 && now < start) enabled = false;
+            if (end > 0 && now > end) enabled = false;
+            snap.put("maintenance", enabled);
+            String msg = row.optString("message", "");
+            if (!msg.isEmpty()) snap.put("maintenance_message", msg);
+        } catch (Exception ignored) {}
+    }
+
+    private void mergeAdSettings(JSONObject snap) {
+        ApiResult<String> r = http.get("/rest/v1/ads_config?select=*&limit=1");
+        if (!r.isSuccess() || r.data == null) return;
+        try {
+            JSONArray arr = new JSONArray(r.data);
+            if (arr.length() == 0) return;
+            JSONObject row = arr.getJSONObject(0);
+            if (row.has("is_enabled")) snap.put("ads", row.optBoolean("is_enabled", false));
+            if (row.has("ads_enabled")) snap.put("ads", row.optBoolean("ads_enabled", false));
+            if (row.has("banner_enabled")) snap.put("banner_ads", row.optBoolean("banner_enabled", false));
+            if (row.has("interstitial_enabled")) snap.put("interstitial_ads", row.optBoolean("interstitial_enabled", false));
+            if (row.has("rewarded_enabled")) snap.put("rewarded_ads", row.optBoolean("rewarded_enabled", false));
         } catch (Exception ignored) {}
     }
 
@@ -379,10 +397,20 @@ public final class SupabaseRepository {
                     "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.US)
                     .format(new java.util.Date()));
 
-            ApiResult<String> r = http.postPrefer(
-                    "/rest/v1/devices?on_conflict=installation_id",
-                    "[" + body + "]",
-                    "resolution=merge-duplicates,return=minimal");
+            String instQ = urlEncode(inst);
+            ApiResult<String> existing = http.get("/rest/v1/devices?select=id&installation_id=eq." + instQ + "&limit=1");
+            if (existing.isSuccess() && existing.data != null) {
+                JSONArray rows = new JSONArray(existing.data);
+                if (rows.length() > 0) {
+                    String id = rows.getJSONObject(0).optString("id", "");
+                    if (!id.isEmpty()) {
+                        ApiResult<String> patch = http.patch("/rest/v1/devices?id=eq." + urlEncode(id), body.toString());
+                        if (patch.isSuccess()) return ApiResult.success(null);
+                        return ApiResult.unknown(patch.message);
+                    }
+                }
+            }
+            ApiResult<String> r = http.post("/rest/v1/devices", "[" + body + "]");
             if (r.isSuccess()) return ApiResult.success(null);
             return ApiResult.unknown(r.message);
         } catch (Exception e) {
@@ -482,7 +510,7 @@ public final class SupabaseRepository {
         } catch(Exception e){return ApiResult.unknown("mark support read failed");}
     }
 
-    /** حذف رسالة من remote_messages. لا يخفي محليًا عند الفشل. */
+    /** حذف رسالة من messages. لا يخفي محليًا عند الفشل. */
     public ApiResult<Void> deleteMessage(long id) {
         if (!isReady()) return ApiResult.notConfigured();
         if (id <= 0) return ApiResult.validation(0, "معرّف غير صالح");
