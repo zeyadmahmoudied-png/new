@@ -6,6 +6,7 @@ public final class UpdateControlContract {
 
     public static final class UpdateInfo {
         public String minimumSupportedVersion = "";
+        public int minimumSupportedVersionCode = 0;
         public String latestVersion = "";
         public boolean forceUpdate;
         public boolean recommendedUpdate;
@@ -32,6 +33,7 @@ public final class UpdateControlContract {
                 return i;
             }
             i.minimumSupportedVersion = com.myplan.app.supabase.RemoteControlCache.minVersion(c);
+            i.minimumSupportedVersionCode = com.myplan.app.supabase.RemoteControlCache.minimumVersionCode(c);
             i.latestVersion = com.myplan.app.supabase.RemoteControlCache.latestVersion(c);
             i.updateUrl = com.myplan.app.supabase.RemoteControlCache.apkUrl(c);
             i.releaseNotes = com.myplan.app.supabase.RemoteControlCache.releaseNotes(c);
