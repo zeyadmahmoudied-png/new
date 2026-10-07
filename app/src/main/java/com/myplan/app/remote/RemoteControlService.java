@@ -128,14 +128,15 @@ public final class RemoteControlService {
             b.put("id", id);
             b.put("email", a.email == null ? "" : a.email);
             b.put("display_name", a.displayName == null ? "" : a.displayName);
-            b.put("last_seen_at", now());
-            b.put("metadata", new JSONObject()
-                    .put("local_user_id", a.userId == null ? "" : a.userId)
-                    .put("app_version", BuildConfig.VERSION_NAME)
-                    .put("version_code", BuildConfig.VERSION_CODE)
-                    .put("android_version", Build.VERSION.RELEASE));
-            http.postPrefer("/rest/v1/app_users?on_conflict=id",
-                    "[" + b + "]", "resolution=merge-duplicates,return=minimal");
+
+            // Insert only. Existing admin-controlled fields are never overwritten by the app.
+            http.post("/rest/v1/app_users", "[" + b + "]");
+
+            // For an existing app user, only identity/profile fields are refreshed.
+            JSONObject safe = new JSONObject();
+            safe.put("email", a.email == null ? "" : a.email);
+            safe.put("display_name", a.displayName == null ? "" : a.displayName);
+            http.patch("/rest/v1/app_users?id=eq." + enc(id), safe.toString());
         } catch (Throwable ignored) {}
     }
 
@@ -159,14 +160,19 @@ public final class RemoteControlService {
 
     private static void readMaintenance(SupabaseHttp http, JSONObject s) {
         try {
-            ApiResult<String> r = http.get("/rest/v1/maintenance_controls?id=eq.true&select=*&limit=1");
+            ApiResult<String> r = http.get("/rest/v1/remote_config?config_key=eq.maintenance&select=config_value&limit=1");
             if (!r.isSuccess() || r.data == null) return;
             JSONArray a = new JSONArray(r.data);
             if (a.length() == 0) return;
-            JSONObject row = a.getJSONObject(0);
-            s.put("maintenance_enabled", row.optBoolean("enabled", false));
-            s.put("maintenance_message", first(row, "message", "title", "maintenance_message",
-                    "التطبيق في وضع الصيانة. يمكنك المحاولة لاحقًا."));
+            Object value = a.getJSONObject(0).opt("config_value");
+            if (value instanceof JSONObject) {
+                JSONObject row = (JSONObject) value;
+                s.put("maintenance_enabled", row.optBoolean("enabled", false));
+                s.put("maintenance_message", first(row, "message", "title", "body",
+                        "التطبيق في وضع الصيانة. يمكنك المحاولة لاحقًا."));
+            } else {
+                s.put("maintenance_enabled", asBool(value));
+            }
             if (row.has("starts_at")) s.put("maintenance_starts_at", row.opt("starts_at"));
             if (row.has("ends_at")) s.put("maintenance_ends_at", row.opt("ends_at"));
         } catch (Throwable ignored) {}
