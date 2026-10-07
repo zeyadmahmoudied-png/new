@@ -57,6 +57,8 @@ public final class RemoteControlCache {
         return optBool(c, "maintenance", false);
     }
 
+    public static String maintenanceMessage(Context c) { return optStr(c, "maintenance_message", "التطبيق في وضع الصيانة. يمكنك المحاولة لاحقًا."); }
+
     public static boolean killSwitch(Context c) {
         return optBool(c, "kill_switch", false);
     }
@@ -68,6 +70,8 @@ public final class RemoteControlCache {
     public static String minVersion(Context c) {
         return optStr(c, "minimum_version", "");
     }
+
+    public static int minimumVersionCode(Context c) { return optInt(c, "minimum_version_code", 0); }
 
     public static String latestVersion(Context c) {
         return optStr(c, "latest_version", "");
@@ -105,6 +109,8 @@ public final class RemoteControlCache {
         if (o == null) return def;
         return o.optBoolean(key, def);
     }
+
+    private static int optInt(Context c, String key, int def) { JSONObject o=loadSnapshot(c); return o==null ? def : o.optInt(key, def); }
 
     private static String optStr(Context c, String key, String def) {
         JSONObject o = loadSnapshot(c);
