@@ -2495,6 +2495,10 @@ public class MainActivity extends Activity {
             final InboxStore.Msg fm = m;
             row.setOnClickListener(v -> {
                 InboxStore.markRead(this, fm.id);
+                new Thread(() -> {
+                    try { new com.myplan.app.supabase.SupabaseRepository(getApplicationContext()).markSupportMessagesRead(); }
+                    catch (Exception ignored) {}
+                }, "support-read").start();
                 updateMoreNavBadge();
                 myDialog().setTitle(fm.title == null || fm.title.isEmpty() ? "رسالة" : fm.title)
                         .setMessage((fm.body == null ? "" : fm.body)
