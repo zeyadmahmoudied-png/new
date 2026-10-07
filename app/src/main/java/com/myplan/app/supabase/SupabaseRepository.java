@@ -302,11 +302,17 @@ public final class SupabaseRepository {
         try {
             JSONObject body = new JSONObject();
             body.put("id", remoteUserUuid(account.userId));
+            body.put("local_user_id", account.userId);
             if (account.email != null && !account.email.isEmpty()) body.put("email", account.email);
             if (account.displayName != null && !account.displayName.isEmpty()) {
                 body.put("display_name", account.displayName);
             }
             body.put("status", "active");
+            body.put("app_version", com.myplan.app.BuildConfig.VERSION_NAME);
+            body.put("android_version", android.os.Build.VERSION.RELEASE);
+            body.put("last_seen_at", new java.text.SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.US)
+                    .format(new java.util.Date()));
             // Prefer merge على id إن وُجدت سياسة/قيود
             ApiResult<String> r = http.postPrefer(
                     "/rest/v1/app_users?on_conflict=id",
@@ -322,7 +328,7 @@ public final class SupabaseRepository {
         }
     }
 
-    /** تسجيل/تحديث جهاز — لا يغيّر Installation ID ولا يمسح أجهزة أخرى. */
+    /** تسجيل/تحديث جهاز — يطابق schema.devices مباشرة. */
     public ApiResult<Void> upsertDevice() {
         if (!isReady()) return ApiResult.notConfigured();
         try {
@@ -330,39 +336,21 @@ public final class SupabaseRepository {
             String inst = AppInfrastructure.getInstallationId(app);
             body.put("installation_id", inst);
             String uid = AccountAuth.getSessionUserId(app);
-            if (uid != null && !uid.isEmpty()) {
-                body.put("user_id", remoteUserUuid(uid));
-            }
-            try {
-                String androidId = android.provider.Settings.Secure.getString(
-                        app.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID);
-                if (androidId != null && !androidId.isEmpty()) body.put("android_id", androidId);
-            } catch (Exception ignored) {}
-            try {
-                body.put("platform", "android");
-                body.put("app_version", com.myplan.app.BuildConfig.VERSION_NAME);
-            } catch (Exception ignored) {}
-            // last_seen إن دعمه الـschema
-            try {
-                body.put("last_seen", new java.text.SimpleDateFormat(
-                        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.US)
-                        .format(new java.util.Date()));
-            } catch (Exception ignored) {}
+            if (uid != null && !uid.isEmpty()) body.put("user_id", remoteUserUuid(uid));
+            body.put("manufacturer", android.os.Build.MANUFACTURER);
+            body.put("model", android.os.Build.MODEL);
+            body.put("android_version", android.os.Build.VERSION.RELEASE);
+            body.put("app_version", com.myplan.app.BuildConfig.VERSION_NAME);
+            body.put("platform", "android");
+            body.put("status", "active");
+            body.put("last_seen_at", new java.text.SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", java.util.Locale.US)
+                    .format(new java.util.Date()));
+
             ApiResult<String> r = http.postPrefer(
                     "/rest/v1/devices?on_conflict=installation_id",
                     "[" + body + "]",
                     "resolution=merge-duplicates,return=minimal");
-            if (r.isSuccess()) return ApiResult.success(null);
-            // أزل حقولًا قد لا توجد في schema ثم أعد المحاولة
-            body.remove("last_seen");
-            body.remove("platform");
-            body.remove("app_version");
-            r = http.postPrefer(
-                    "/rest/v1/devices?on_conflict=installation_id",
-                    "[" + body + "]",
-                    "resolution=merge-duplicates,return=minimal");
-            if (r.isSuccess()) return ApiResult.success(null);
-            r = http.post("/rest/v1/devices", "[" + body + "]");
             if (r.isSuccess()) return ApiResult.success(null);
             return ApiResult.unknown(r.message);
         } catch (Exception e) {
