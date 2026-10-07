@@ -40,7 +40,7 @@ public final class RemoteMessagingService {
             JSONObject row = new JSONObject();
             row.put("title", "رسالة من المستخدم");
             row.put("body", body);
-            row.put("message_type", "contact");
+            row.put("message_type", "in_app");
             row.put("type", "general");
             row.put("target_type", "support");
             row.put("target_id", uid);
