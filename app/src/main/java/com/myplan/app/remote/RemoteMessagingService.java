@@ -72,6 +72,17 @@ public final class RemoteMessagingService {
         }
     }
 
+    /** Compatibility signature for the existing Contact UI; type/installId are metadata only. */
+    public static ApiResult<Void> send(Context context, String type, String message,
+                                       String userId, String installationId) {
+        return send(context, message);
+    }
+
+    /** Legacy message deletion is intentionally disabled in the new support model. */
+    public static ApiResult<Void> deleteLegacyMessage(Context context, long id) {
+        return ApiResult.validation(0, "الرسائل الجديدة تُدار كمحادثة دعم");
+    }
+
     public static ApiResult<Void> send(Context context, String message) {
         Context app = context.getApplicationContext();
         if (!SupabaseConfig.isConfigured(app)) return ApiResult.notConfigured();
