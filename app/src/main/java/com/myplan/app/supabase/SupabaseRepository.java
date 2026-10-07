@@ -183,25 +183,6 @@ public final class SupabaseRepository {
     }
 
     private void mergeMaintenanceControls(JSONObject snap) {
-        ApiResult<String> r = http.get("/rest/v1/maintenance_controls?select=*&id=eq.true&limit=1");
-        if (!r.isSuccess() || r.data == null) return;
-        try {
-            JSONArray arr = new JSONArray(r.data);
-            if (arr.length() == 0) return;
-            JSONObject row = arr.getJSONObject(0);
-            boolean enabled = row.optBoolean("enabled", false);
-            long now = System.currentTimeMillis();
-            long start = parseRemoteTime(row, "starts_at");
-            long end = parseRemoteTime(row, "ends_at");
-            if (start > 0 && now < start) enabled = false;
-            if (end > 0 && now > end) enabled = false;
-            snap.put("maintenance", enabled);
-            String msg = row.optString("message", "");
-            if (!msg.isEmpty()) snap.put("maintenance_message", msg);
-        } catch (Exception ignored) {}
-    }
-
-    private void mergeMaintenanceControls(JSONObject snap) {
         ApiResult<String> r = http.get("/rest/v1/maintenance_settings?select=is_enabled,message,starts_at,ends_at&limit=1");
         if (!r.isSuccess() || r.data == null) return;
         try {
