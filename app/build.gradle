@@ -17,9 +17,6 @@ def localPropsFile = rootProject.file('local.properties')
 if (localPropsFile.exists()) {
     localProps.load(new FileInputStream(localPropsFile))
 }
-// Publishable/Anon only — never put service_role in the APK
-def supabaseUrl = (localProps.getProperty('supabase.url') ?: '').replace('"', '\\"')
-def supabaseAnon = (localProps.getProperty('supabase.anonKey') ?: '').replace('"', '\\"')
 def localDevHash = (localProps.getProperty('myplan.debugDevPasswordSha256') ?: '')
 
 android {
@@ -34,8 +31,6 @@ android {
         targetSdk 34
         versionCode 1
         versionName '1.0'
-        buildConfigField "String", "SUPABASE_URL", "\"${supabaseUrl}\""
-        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${supabaseAnon}\""
         buildConfigField "String", "LOCAL_DEV_PASS_SHA256", "\"${localDevHash}\""
     }
     compileOptions {
