@@ -78,15 +78,13 @@ public final class RemoteControlService {
             if (account != null) upsertProfile(http, account, remoteUserId);
             upsertDevice(http, app, remoteUserId);
 
-            JSONObject profile = first(http.get("/rest/v1/profiles?id=eq." + enc(remoteUserId)
-                    + "&select=id,status,is_premium,premium_expires_at&limit=1"));
+            JSONObject profile = first(http.get("/rest/v1/app_users?id=eq." + enc(remoteUserId)
+                    + "&select=id,status,email,display_name&limit=1"));
             if (profile != null) {
                 String status = profile.optString("status", "active");
                 out.accountBanned = "banned".equalsIgnoreCase(status)
                         || "disabled".equalsIgnoreCase(status);
-                if (profile.optBoolean("is_premium", false)) snapshot.put("premium_active", true);
-                String exp = profile.optString("premium_expires_at", "");
-                if (!exp.isEmpty()) snapshot.put("premium_expires_at", exp);
+                
             }
 
             JSONObject device = first(http.get("/rest/v1/devices?installation_id=eq."
@@ -131,14 +129,13 @@ public final class RemoteControlService {
             b.put("id", id);
             b.put("email", a.email == null ? "" : a.email);
             b.put("display_name", a.displayName == null ? "" : a.displayName);
-            b.put("status", "active");
-            b.put("last_activity_at", now());
+            b.put("last_seen_at", now());
             b.put("metadata", new JSONObject()
                     .put("local_user_id", a.userId == null ? "" : a.userId)
                     .put("app_version", BuildConfig.VERSION_NAME)
                     .put("version_code", BuildConfig.VERSION_CODE)
                     .put("android_version", Build.VERSION.RELEASE));
-            http.postPrefer("/rest/v1/profiles?on_conflict=id",
+            http.postPrefer("/rest/v1/app_users?on_conflict=id",
                     "[" + b + "]", "resolution=merge-duplicates,return=minimal");
         } catch (Throwable ignored) {}
     }
@@ -155,7 +152,6 @@ public final class RemoteControlService {
             b.put("android_version", Build.VERSION.RELEASE);
             b.put("app_version", BuildConfig.VERSION_NAME);
             b.put("version_code", BuildConfig.VERSION_CODE);
-            b.put("status", "active");
             b.put("last_seen_at", now());
             http.postPrefer("/rest/v1/devices?on_conflict=installation_id",
                     "[" + b + "]", "resolution=merge-duplicates,return=minimal");
@@ -164,13 +160,12 @@ public final class RemoteControlService {
 
     private static void readMaintenance(SupabaseHttp http, JSONObject s) {
         try {
-            ApiResult<String> r = http.get("/rest/v1/maintenance_settings?select=*&limit=1");
+            ApiResult<String> r = http.get("/rest/v1/maintenance_controls?id=eq.true&select=*&limit=1");
             if (!r.isSuccess() || r.data == null) return;
             JSONArray a = new JSONArray(r.data);
             if (a.length() == 0) return;
             JSONObject row = a.getJSONObject(0);
-            s.put("maintenance_enabled", row.optBoolean("enabled",
-                    row.optBoolean("maintenance_enabled", false)));
+            s.put("maintenance_enabled", row.optBoolean("enabled", false));
             s.put("maintenance_message", first(row, "message", "title", "maintenance_message",
                     "التطبيق في وضع الصيانة. يمكنك المحاولة لاحقًا."));
             if (row.has("starts_at")) s.put("maintenance_starts_at", row.opt("starts_at"));
@@ -270,8 +265,9 @@ public final class RemoteControlService {
 
     private static void readAnnouncements(SupabaseHttp http, JSONObject s) {
         try {
-            ApiResult<String> r = http.get("/rest/v1/announcements?select=*&is_active=eq.true"
-                    + "&order=created_at.desc&limit=50");
+            ApiResult<String> r = http.get("/rest/v1/remote_messages?select=*&is_active=eq.true"
+                    + "&message_type=in.(announcement,maintenance,update,new_feature,warning,in_app)"
+                    + "&order=priority.desc,created_at.desc&limit=50");
             if (!r.isSuccess() || r.data == null) return;
             s.put("announcements", new JSONArray(r.data));
         } catch (Throwable ignored) {}
