@@ -11,77 +11,19 @@ import com.myplan.app.supabase.SupabaseHttp;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.UUID;
+import java.net.URLEncoder;
 
 /**
- * Clean two-way Support inbox.
+ * Fresh Control Center messaging contract.
  *
- * User -> Control Center and Control Center -> User are conversation messages.
- * System announcements are deliberately NOT stored here.
+ * Both directions use public.remote_messages:
+ * user -> center: message_type=contact, target_type=support
+ * center -> user: message_type=in_app, target_type=user, target_id=<app_user_id>
+ *
+ * System announcements use the same table but are kept separate by message_type.
  */
 public final class RemoteMessagingService {
     private RemoteMessagingService() {}
-
-    public static ApiResult<JSONArray> fetchInboxMessages(Context context) {
-        Context app = context.getApplicationContext();
-        if (!SupabaseConfig.isConfigured(app)) return ApiResult.notConfigured();
-
-        SupabaseHttp http = new SupabaseHttp(app);
-        String uid = remoteUserId(AccountAuth.getSessionUserId(app));
-        if (uid.isEmpty()) uid = remoteUserId(AppInfrastructure.getUserId(app));
-        if (uid.isEmpty()) return ApiResult.success(new JSONArray());
-
-        try {
-            ApiResult<String> conv = http.get("/rest/v1/conversations?user_id=eq."
-                    + enc(uid) + "&select=id,status,created_at,updated_at&limit=1");
-            String conversationId = "";
-            if (conv.isSuccess() && conv.data != null) {
-                JSONArray a = new JSONArray(conv.data);
-                if (a.length() > 0) conversationId = a.getJSONObject(0).optString("id", "");
-            }
-
-            if (conversationId.isEmpty()) return ApiResult.success(new JSONArray());
-
-            ApiResult<String> rows = http.get("/rest/v1/conversation_messages?conversation_id=eq."
-                    + enc(conversationId)
-                    + "&select=id,conversation_id,sender_type,body,created_at,read_at"
-                    + "&order=created_at.asc&limit=200");
-            if (!rows.isSuccess() || rows.data == null) return ApiResult.unknown(rows.message);
-
-            JSONArray source = new JSONArray(rows.data);
-            JSONArray out = new JSONArray();
-            for (int i = 0; i < source.length(); i++) {
-                JSONObject x = source.getJSONObject(i);
-                JSONObject m = new JSONObject();
-                m.put("id", x.optString("id", ""));
-                m.put("title", "محادثة الدعم");
-                String sender = x.optString("sender_type", "user");
-                m.put("body", ("admin".equalsIgnoreCase(sender) ? "الدعم: " : "أنت: ")
-                        + x.optString("body", ""));
-                m.put("created_at", x.optString("created_at", ""));
-                m.put("target_type", "conversation");
-                m.put("message_type", "support");
-                m.put("is_active", true);
-                m.put("sender_type", sender);
-                m.put("read", !x.optString("read_at", "").isEmpty());
-                out.put(m);
-            }
-            return ApiResult.success(out);
-        } catch (Throwable t) {
-            return ApiResult.unknown("تعذر قراءة محادثة الدعم");
-        }
-    }
-
-    /** Compatibility signature for the existing Contact UI; type/installId are metadata only. */
-    public static ApiResult<Void> send(Context context, String type, String message,
-                                       String userId, String installationId) {
-        return send(context, message);
-    }
-
-    /** Legacy message deletion is intentionally disabled in the new support model. */
-    public static ApiResult<Void> deleteLegacyMessage(Context context, long id) {
-        return ApiResult.validation(0, "الرسائل الجديدة تُدار كمحادثة دعم");
-    }
 
     public static ApiResult<Void> send(Context context, String message) {
         Context app = context.getApplicationContext();
@@ -90,80 +32,94 @@ public final class RemoteMessagingService {
         String body = message == null ? "" : message.trim();
         if (body.isEmpty()) return ApiResult.validation(0, "الرسالة فارغة");
 
-        String uid = remoteUserId(AccountAuth.getSessionUserId(app));
-        if (uid.isEmpty()) uid = remoteUserId(AppInfrastructure.getUserId(app));
+        String uid = currentRemoteUserId(app);
         if (uid.isEmpty()) return ApiResult.validation(0, "لا يوجد حساب");
 
         SupabaseHttp http = new SupabaseHttp(app);
         try {
-            String conversationId = findOrCreateConversation(http, uid);
-            if (conversationId.isEmpty()) return ApiResult.unknown("تعذر إنشاء المحادثة");
-
             JSONObject row = new JSONObject();
-            row.put("conversation_id", conversationId);
-            row.put("sender_type", "user");
-            row.put("sender_user_id", uid);
+            row.put("title", "رسالة من المستخدم");
             row.put("body", body);
-            ApiResult<String> r = http.post("/rest/v1/conversation_messages",
-                    "[" + row + "]");
-            return r.isSuccess() ? ApiResult.success(null) : ApiResult.unknown(r.message);
+            row.put("message_type", "contact");
+            row.put("type", "general");
+            row.put("target_type", "support");
+            row.put("target_id", uid);
+            row.put("user_id", uid);
+            row.put("is_active", true);
+            row.put("created_at", now());
+
+            ApiResult<String> r = http.post("/rest/v1/remote_messages", "[" + row + "]");
+            return r.isSuccess()
+                    ? ApiResult.success(null)
+                    : ApiResult.unknown(r.message == null ? "تعذر إرسال الرسالة" : r.message);
         } catch (Throwable t) {
             return ApiResult.unknown("تعذر إرسال الرسالة");
         }
     }
 
-    public static ApiResult<Void> markRead(Context context) {
+    /** Existing Contact UI compatibility. */
+    public static ApiResult<Void> send(Context context, String type, String message,
+                                       String userId, String installationId) {
+        return send(context, message);
+    }
+
+    public static ApiResult<JSONArray> fetchInboxMessages(Context context) {
         Context app = context.getApplicationContext();
         if (!SupabaseConfig.isConfigured(app)) return ApiResult.notConfigured();
-        String uid = remoteUserId(AccountAuth.getSessionUserId(app));
-        if (uid.isEmpty()) return ApiResult.success(null);
+
+        String uid = currentRemoteUserId(app);
+        if (uid.isEmpty()) return ApiResult.success(new JSONArray());
+
         SupabaseHttp http = new SupabaseHttp(app);
         try {
-            ApiResult<String> conv = http.get("/rest/v1/conversations?user_id=eq."
-                    + enc(uid) + "&select=id&limit=1");
-            if (!conv.isSuccess() || conv.data == null) return ApiResult.unknown(conv.message);
-            JSONArray a = new JSONArray(conv.data);
-            if (a.length() == 0) return ApiResult.success(null);
-            String cid = a.getJSONObject(0).optString("id", "");
-            if (cid.isEmpty()) return ApiResult.success(null);
-            JSONObject patch = new JSONObject().put("read_at", now());
-            ApiResult<String> r = http.patch("/rest/v1/conversation_messages?conversation_id=eq."
-                    + enc(cid) + "&sender_type=eq.admin&read_at=is.null", patch.toString());
-            return r.isSuccess() ? ApiResult.success(null) : ApiResult.unknown(r.message);
-        } catch (Throwable t) {
-            return ApiResult.unknown("تعذر تحديث حالة القراءة");
-        }
-    }
+            ApiResult<String> r = http.get("/rest/v1/remote_messages"
+                    + "?target_type=eq.user&target_id=eq." + enc(uid)
+                    + "&is_active=eq.true"
+                    + "&message_type=in.(in_app,announcement,update,warning,new_feature)"
+                    + "&select=id,title,body,message_type,type,target_type,target_id,created_at"
+                    + "&order=created_at.asc&limit=200");
+            if (!r.isSuccess() || r.data == null) return ApiResult.unknown(r.message);
 
-    private static String findOrCreateConversation(SupabaseHttp http, String uid) {
-        try {
-            ApiResult<String> q = http.get("/rest/v1/conversations?user_id=eq."
-                    + enc(uid) + "&select=id&limit=1");
-            if (q.isSuccess() && q.data != null) {
-                JSONArray a = new JSONArray(q.data);
-                if (a.length() > 0) return a.getJSONObject(0).optString("id", "");
+            JSONArray source = new JSONArray(r.data);
+            JSONArray out = new JSONArray();
+            for (int i = 0; i < source.length(); i++) {
+                JSONObject x = source.getJSONObject(i);
+                JSONObject m = new JSONObject();
+                m.put("id", x.optString("id", ""));
+                m.put("title", x.optString("title", "رسالة من مركز التحكم"));
+                m.put("body", x.optString("body", ""));
+                m.put("created_at", x.optString("created_at", ""));
+                m.put("target_type", x.optString("target_type", "user"));
+                m.put("message_type", x.optString("message_type", "in_app"));
+                m.put("is_active", true);
+                m.put("sender_type", "admin");
+                m.put("read", false);
+                out.put(m);
             }
-
-            String id = UUID.randomUUID().toString();
-            JSONObject row = new JSONObject();
-            row.put("id", id);
-            row.put("user_id", uid);
-            row.put("status", "open");
-            ApiResult<String> ins = http.post("/rest/v1/conversations", "[" + row + "]");
-            return ins.isSuccess() ? id : "";
+            return ApiResult.success(out);
         } catch (Throwable t) {
-            return "";
+            return ApiResult.unknown("تعذر قراءة رسائل مركز التحكم");
         }
     }
 
-    private static String remoteUserId(String local) {
-        if (local == null || local.isEmpty()) return "";
-        return UUID.nameUUIDFromBytes(("myplan-user:" + local)
-                .getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+    public static ApiResult<Void> markRead(Context context) {
+        // The current Control Center contract has no mandatory read column.
+        // Keep this method as a safe compatibility no-op.
+        return ApiResult.success(null);
+    }
+
+    public static ApiResult<Void> deleteLegacyMessage(Context context, long id) {
+        return ApiResult.validation(0, "الرسائل القديمة متوقفة؛ استخدم remote_messages");
+    }
+
+    private static String currentRemoteUserId(Context c) {
+        String local = AccountAuth.getSessionUserId(c);
+        if (local == null || local.isEmpty()) local = AppInfrastructure.getUserId(c);
+        return RemoteControlService.toRemoteUserId(local);
     }
 
     private static String enc(String s) {
-        try { return java.net.URLEncoder.encode(s == null ? "" : s, "UTF-8"); }
+        try { return URLEncoder.encode(s == null ? "" : s, "UTF-8"); }
         catch (Throwable ignored) { return s == null ? "" : s; }
     }
 
