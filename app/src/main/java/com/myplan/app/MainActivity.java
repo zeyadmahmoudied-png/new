@@ -311,7 +311,7 @@ public class MainActivity extends Activity {
             }
             if (com.myplan.app.supabase.RemoteControlCache.maintenance(this)) {
                 myDialog().setTitle("صيانة")
-                        .setMessage("التطبيق في وضع الصيانة. يمكنك المحاولة لاحقًا. بياناتك لم تُحذف.")
+                        .setMessage(com.myplan.app.supabase.RemoteControlCache.maintenanceMessage(this) + "\n\nبياناتك لم تُحذف.")
                         .setCancelable(true)
                         .setPositiveButton("حسناً", null)
                         .show();
@@ -321,7 +321,7 @@ public class MainActivity extends Activity {
             if (ui != null && "OK".equals(ui.status)) {
                 String cur = "1.0";
                 try { cur = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
-                if (ui.forceUpdate || needsForceUpdate(cur, ui.minimumSupportedVersion)) {
+                if (ui.forceUpdate || needsForceUpdateCode(getCurrentVersionCode(), ui.minimumSupportedVersionCode) || needsForceUpdate(cur, ui.minimumSupportedVersion)) {
                     String msg = ui.releaseNotes != null && !ui.releaseNotes.isEmpty()
                             ? ui.releaseNotes : "يجب تحديث التطبيق للمتابعة.";
                     if (ui.updateUrl != null && !ui.updateUrl.isEmpty()) {
@@ -348,6 +348,10 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
     }
+
+    private int getCurrentVersionCode() { try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode; } catch (Exception ignored) { return 0; } }
+
+    private boolean needsForceUpdateCode(int current, int minimum) { return minimum > 0 && current > 0 && current < minimum; }
 
     private boolean needsForceUpdate(String current, String minimum) {
         if (minimum == null || minimum.trim().isEmpty()) return false;
