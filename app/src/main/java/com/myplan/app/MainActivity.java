@@ -166,24 +166,25 @@ public class MainActivity extends Activity {
         // بعد بناء الواجهة: فتح Smart Recovery من إشعار فائتة إن وُجد
         content.post(() -> handleOpenMissedFromIntent(getIntent()));
         // Remote Control (Supabase) — لا يمس Planner
-        
-        
+        content.post(this::applyRemoteControlGates);
+        content.post(this::applyAdminBanGates);
+        com.myplan.app.supabase.RemoteSyncCoordinator.syncAsync(this);
         // تحديث الحظر + الرسائل + Announcements في الخلفية بعد الدخول
         new Thread(() -> {
             try {
-                
+                com.myplan.app.supabase.AdminBanGate.refresh(getApplicationContext());
             } catch (Exception ignored) {}
-            
+            runOnUiThread(this::applyAdminBanGates);
             try {
                 syncInboxAsync(false);
             } catch (Exception ignored) {}
             try {
-                
+                com.myplan.app.supabase.AnnouncementManager.fetchAndCache(getApplicationContext());
             } catch (Exception ignored) {}
             runOnUiThread(() -> {
                 try {
                     content.postDelayed(
-                            () -> {},
+                            () -> com.myplan.app.supabase.AnnouncementManager.maybeShow(MainActivity.this),
                             600);
                 } catch (Exception ignored) {}
             });
@@ -195,9 +196,9 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             int unreadAfter = 0;
             try {
-                if (false) {
+                if (com.myplan.app.supabase.SupabaseConfig.isConfigured(appCtx)) {
                     com.myplan.app.api.ApiResult<org.json.JSONArray> r =
-                            null;
+                            new com.myplan.app.supabase.SupabaseRepository(appCtx).fetchInboxMessages();
                     if (r != null && r.isSuccess() && r.data != null) {
                         InboxStore.saveCache(appCtx, r.data);
                     }
@@ -300,7 +301,7 @@ public class MainActivity extends Activity {
     /** Maintenance / Kill Switch / Force Update من الكاش — بدون حذف بيانات. */
     private void applyRemoteControlGates() {
         try {
-            if (false) {
+            if (com.myplan.app.supabase.RemoteControlCache.killSwitch(this)) {
                 myDialog().setTitle("التطبيق متوقف مؤقتًا")
                         .setMessage("تم تفعيل إيقاف الطوارئ من لوحة التحكم. بياناتك محفوظة على الجهاز.")
                         .setCancelable(false)
@@ -308,9 +309,9 @@ public class MainActivity extends Activity {
                         .show();
                 return;
             }
-            if (false) {
+            if (com.myplan.app.supabase.RemoteControlCache.maintenance(this)) {
                 myDialog().setTitle("صيانة")
-                        .setMessage("" + "\n\nبياناتك لم تُحذف.")
+                        .setMessage(com.myplan.app.supabase.RemoteControlCache.maintenanceMessage(this) + "\n\nبياناتك لم تُحذف.")
                         .setCancelable(true)
                         .setPositiveButton("حسناً", null)
                         .show();
