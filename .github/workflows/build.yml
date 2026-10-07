@@ -119,3 +119,5 @@ jobs:
           path: artifacts/
           if-no-files-found: error
           retention-days: 30
+
+# Trigger APK build after remote-control integration
