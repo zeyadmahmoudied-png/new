@@ -63,7 +63,11 @@ jobs:
       - name: Create local build configuration
         shell: bash
         run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          {
+            echo "sdk.dir=$ANDROID_SDK_ROOT"
+            echo "supabase.url=${{ secrets.SUPABASE_URL }}"
+            echo "supabase.anonKey=${{ secrets.SUPABASE_ANON_KEY }}"
+          } > local.properties
 
       - name: Create temporary CI signing key
         if: ${{ env.BUILD_TYPE != 'debug' }}
