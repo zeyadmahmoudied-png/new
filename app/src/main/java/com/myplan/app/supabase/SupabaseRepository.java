@@ -158,8 +158,20 @@ public final class SupabaseRepository {
         try {
             JSONArray arr = new JSONArray(r.data);
             if (arr.length() == 0) return;
+            // The contract uses version_code/version_name. Do not depend on row order.
             JSONObject row = arr.getJSONObject(0);
-            putIf(snap, "latest_version", firstString(row, "latest_version", "version_name", "version"));
+            int bestCode = row.optInt("version_code", -1);
+            for (int i = 1; i < arr.length(); i++) {
+                JSONObject candidate = arr.getJSONObject(i);
+                int code = candidate.optInt("version_code", -1);
+                if (code > bestCode) {
+                    row = candidate;
+                    bestCode = code;
+                }
+            }
+            putIf(snap, "latest_version", firstString(row, "version_name", "latest_version", "version"));
+            if (row.has("version_code")) snap.put("latest_version_code", row.optInt("version_code", 0));
+            if (row.has("minimum_version_code")) snap.put("minimum_version_code", row.optInt("minimum_version_code", 1));
             putIf(snap, "minimum_version", firstString(row, "minimum_version", "min_version", "minimum_supported_version"));
             putIf(snap, "apk_url", firstString(row, "apk_url", "download_url", "url"));
             putIf(snap, "update_message", firstString(row, "update_message", "message"));
