@@ -170,11 +170,11 @@ public final class RemoteControlService {
                 s.put("maintenance_enabled", row.optBoolean("enabled", false));
                 s.put("maintenance_message", first(row, "message", "title", "body",
                         "التطبيق في وضع الصيانة. يمكنك المحاولة لاحقًا."));
+                if (row.has("starts_at")) s.put("maintenance_starts_at", row.opt("starts_at"));
+                if (row.has("ends_at")) s.put("maintenance_ends_at", row.opt("ends_at"));
             } else {
                 s.put("maintenance_enabled", asBool(value));
             }
-                if (row.has("starts_at")) s.put("maintenance_starts_at", row.opt("starts_at"));
-                if (row.has("ends_at")) s.put("maintenance_ends_at", row.opt("ends_at"));
         } catch (Throwable ignored) {}
     }
 
