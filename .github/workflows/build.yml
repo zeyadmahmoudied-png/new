@@ -61,17 +61,9 @@ jobs:
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Create local build configuration
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         shell: bash
         run: |
-          set -euo pipefail
-          {
-            echo "sdk.dir=$ANDROID_HOME"
-            if [ -n "${SUPABASE_URL:-}" ]; then echo "supabase.url=$SUPABASE_URL"; fi
-            if [ -n "${SUPABASE_ANON_KEY:-}" ]; then echo "supabase.anonKey=$SUPABASE_ANON_KEY"; fi
-          } > local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
       - name: Create temporary CI signing key
         if: ${{ env.BUILD_TYPE != 'debug' }}
