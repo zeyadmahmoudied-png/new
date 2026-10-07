@@ -482,8 +482,11 @@ public final class SupabaseRepository {
             JSONObject body = new JSONObject();
             body.put("title", type == null || type.isEmpty() ? "تواصل" : type);
             body.put("body", message == null ? "" : message);
-            body.put("message_type", "contact");
-            body.put("target_type", "support");
+            // remote_messages contract accepts in_app/announcement/push/maintenance/update/warning.
+            // A user->Control Center message is stored as a user-targeted in_app message,
+            // so it remains visible to admins without violating the schema CHECK constraint.
+            body.put("message_type", "in_app");
+            body.put("target_type", "user");
             body.put("is_active", true);
             String localUid = userId;
             if (localUid == null || localUid.isEmpty()) {
@@ -496,10 +499,6 @@ public final class SupabaseRepository {
                 body.put("target_id", remoteUserUuid(localUid));
             }
             ApiResult<String> r = http.post("/rest/v1/remote_messages", "[" + body + "]");
-            if (r.isSuccess()) return ApiResult.success(null);
-            body.remove("target_type");
-            body.remove("target_id");
-            r = http.post("/rest/v1/remote_messages", "[" + body + "]");
             if (r.isSuccess()) return ApiResult.success(null);
             return ApiResult.unknown(r.message);
         } catch (Exception e) {
