@@ -173,8 +173,8 @@ public final class RemoteControlService {
             } else {
                 s.put("maintenance_enabled", asBool(value));
             }
-            if (row.has("starts_at")) s.put("maintenance_starts_at", row.opt("starts_at"));
-            if (row.has("ends_at")) s.put("maintenance_ends_at", row.opt("ends_at"));
+                if (row.has("starts_at")) s.put("maintenance_starts_at", row.opt("starts_at"));
+                if (row.has("ends_at")) s.put("maintenance_ends_at", row.opt("ends_at"));
         } catch (Throwable ignored) {}
     }
 
@@ -309,6 +309,11 @@ public final class RemoteControlService {
     private static boolean asBool(Object v) {
         if (v instanceof Boolean) return (Boolean) v;
         return "true".equalsIgnoreCase(String.valueOf(v));
+    }
+
+    /** Stable app-user identity shared by every remote-control service. */
+    public static String toRemoteUserId(String local) {
+        return remoteUserId(local);
     }
 
     private static String remoteUserId(String local) {
