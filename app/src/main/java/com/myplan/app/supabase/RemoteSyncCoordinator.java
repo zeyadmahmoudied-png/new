@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import com.myplan.app.AccountAuth;
 import com.myplan.app.AppInfrastructure;
 import com.myplan.app.api.ApiResult;
+import com.myplan.app.notifications.RemoteNotificationPresenter;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -42,6 +43,11 @@ public final class RemoteSyncCoordinator {
             applyRemotePremiumGrant(app);
             flushPendingContactMessages(app, repo);
             AnnouncementManager.fetchAndCache(app);
+            try {
+                JSONObject remote = fetched.data;
+                JSONArray push = remote == null ? null : remote.optJSONArray("remote_push_messages");
+                RemoteNotificationPresenter.showPending(app, push);
+            } catch (Exception ignored) {}
             RemoteScheduledActionManager.syncAndApply(app);
             lastStatus = "ok";
             android.util.Log.d("RemoteSync", "REMOTE_SYNC_SUCCESS");
