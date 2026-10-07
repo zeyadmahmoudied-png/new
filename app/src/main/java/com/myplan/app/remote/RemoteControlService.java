@@ -81,9 +81,10 @@ public final class RemoteControlService {
             JSONObject profile = first(http.get("/rest/v1/app_users?id=eq." + enc(remoteUserId)
                     + "&select=id,status,email,display_name&limit=1"));
             if (profile != null) {
-                String status = profile.optBoolean("banned", false) || "banned".equalsIgnoreCase(profile.optString("status", ""))
+                out.accountBanned = profile.optBoolean("banned", false)
+                        || "banned".equalsIgnoreCase(profile.optString("status", ""))
                         || "disabled".equalsIgnoreCase(profile.optString("status", ""));
-                
+                snapshot.put("account_banned", out.accountBanned);
             }
 
             JSONObject device = first(http.get("/rest/v1/device_controls?installation_id=eq."
@@ -145,6 +146,8 @@ public final class RemoteControlService {
             JSONObject b = new JSONObject();
             String installation = AppInfrastructure.getInstallationId(app);
             b.put("installation_id", installation);
+            String androidId = Settings.Secure.getString(app.getContentResolver(), Settings.Secure.ANDROID_ID);
+            if (androidId != null && !androidId.isEmpty()) b.put("android_id", androidId);
             if (remoteUserId != null && !remoteUserId.isEmpty()) b.put("user_id", remoteUserId);
             b.put("platform", "android");
             b.put("manufacturer", Build.MANUFACTURER);
