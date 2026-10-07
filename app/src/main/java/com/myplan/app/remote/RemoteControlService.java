@@ -76,7 +76,7 @@ public final class RemoteControlService {
 
             // Registration is best-effort. The control plane must never touch planner data.
             if (account != null) upsertProfile(http, account, remoteUserId);
-            upsertDevice(http, remoteUserId);
+            upsertDevice(http, app, remoteUserId);
 
             JSONObject profile = first(http.get("/rest/v1/profiles?id=eq." + enc(remoteUserId)
                     + "&select=id,status,is_premium,premium_expires_at&limit=1"));
@@ -143,17 +143,6 @@ public final class RemoteControlService {
         } catch (Throwable ignored) {}
     }
 
-    private static void upsertDevice(SupabaseHttp http, String remoteUserId) {
-        try {
-            JSONObject b = new JSONObject();
-            b.put("installation_id", AppInfrastructure.getInstallationId(nullSafeContext(http)));
-        } catch (Throwable ignored) {}
-    }
-
-    /*
-     * SupabaseHttp intentionally hides its Context. Device registration is therefore
-     * performed by the overload below from sync(), keeping the HTTP client isolated.
-     */
     private static void upsertDevice(SupabaseHttp http, Context app, String remoteUserId) {
         try {
             JSONObject b = new JSONObject();
@@ -336,9 +325,4 @@ public final class RemoteControlService {
         return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US)
                 .format(new Date());
     }
-
-    /*
-     * Kept only to make accidental Context-less calls harmless; never used by sync().
-     */
-    private static Context nullSafeContext(SupabaseHttp http) { return null; }
 }
