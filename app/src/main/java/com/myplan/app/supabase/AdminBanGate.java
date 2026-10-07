@@ -12,8 +12,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * حظر الحساب من app_users.banned فقط.
- * حظر الجهاز من device_controls.blocked فقط.
+ * حظر الحساب من app_users.status (banned/disabled).
+ * حظر الجهاز من devices.status=blocked.
  * معرّف الجهاز: android_id أولًا ثم installation_id.
  */
 public final class AdminBanGate {
@@ -98,29 +98,30 @@ public final class AdminBanGate {
                 // 1) بالمعرّف  2) بالإيميل  3) صريح banned=true
                 ApiResult<String> r = repo.httpGet(
                         "/rest/v1/app_users?id=eq." + urlEnc(remoteId)
-                                + "&select=id,email,banned&limit=1");
+                                + "&select=id,email,status&limit=1");
                 if ((!r.isSuccess() || r.data == null || "[]".equals(r.data.trim()))
                         && !email.isEmpty()) {
                     r = repo.httpGet(
                             "/rest/v1/app_users?email=eq." + urlEnc(email)
-                                    + "&select=id,email,banned&limit=1");
+                                    + "&select=id,email,status&limit=1");
                 }
                 if ((!r.isSuccess() || r.data == null || "[]".equals(r.data.trim()))
                         && !email.isEmpty()) {
                     r = repo.httpGet(
                             "/rest/v1/app_users?email=eq." + urlEnc(email)
-                                    + "&banned=eq.true&select=id,email,banned&limit=1");
+                                    + "&status=in.(banned,disabled)&select=id,email,status&limit=1");
                 }
                 if ((!r.isSuccess() || r.data == null || "[]".equals(r.data.trim()))) {
                     r = repo.httpGet(
                             "/rest/v1/app_users?id=eq." + urlEnc(remoteId)
-                                    + "&banned=eq.true&select=id,email,banned&limit=1");
+                                    + "&status=in.(banned,disabled)&select=id,email,status&limit=1");
                 }
                 if (r.isSuccess() && r.data != null) {
                     accFetched = true;
                     JSONArray arr = new JSONArray(r.data);
                     if (arr.length() > 0) {
-                        boolean banned = arr.getJSONObject(0).optBoolean("banned", false);
+                        String status = arr.getJSONObject(0).optString("status", "active");
+                        boolean banned = "banned".equalsIgnoreCase(status) || "disabled".equalsIgnoreCase(status);
                         s.accountBanned = banned;
                         if (banned) s.accountMessage = "تم حظر هذا الحساب من لوحة التحكم.";
                     } else {
@@ -143,8 +144,8 @@ public final class AdminBanGate {
 
             if (androidId != null && !androidId.isEmpty()) {
                 ApiResult<String> byAid = repo.httpGet(
-                        "/rest/v1/device_controls?android_id=eq." + urlEnc(androidId)
-                                + "&select=blocked,android_id,installation_id&limit=5");
+                        "/rest/v1/devices?installation_id=eq." + urlEnc(inst)
+                                + "&select=status,installation_id&limit=5");
                 if (byAid.isSuccess() && byAid.data != null) {
                     devFetched = true;
                     matched = firstBlockedOrFirst(byAid.data);
@@ -152,8 +153,8 @@ public final class AdminBanGate {
             }
             if (matched == null && inst != null && !inst.isEmpty()) {
                 ApiResult<String> byInst = repo.httpGet(
-                        "/rest/v1/device_controls?installation_id=eq." + urlEnc(inst)
-                                + "&select=blocked,android_id,installation_id&limit=5");
+                        "/rest/v1/devices?installation_id=eq." + urlEnc(inst)
+                                + "&select=status,installation_id&limit=5");
                 if (byInst.isSuccess() && byInst.data != null) {
                     devFetched = true;
                     if (matched == null) matched = firstBlockedOrFirst(byInst.data);
@@ -161,7 +162,7 @@ public final class AdminBanGate {
             }
 
             if (devFetched) {
-                s.deviceBanned = matched != null && matched.optBoolean("blocked", false);
+                s.deviceBanned = matched != null && "blocked".equalsIgnoreCase(matched.optString("status", ""));
                 if (s.deviceBanned) s.deviceMessage = "تم حظر هذا الجهاز من لوحة التحكم.";
             }
         } catch (Exception e) {
@@ -188,7 +189,7 @@ public final class AdminBanGate {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject row = arr.getJSONObject(i);
                 if (first == null) first = row;
-                if (row.optBoolean("blocked", false)) return row;
+                if ("blocked".equalsIgnoreCase(row.optString("status", ""))) return row;
             }
             return first;
         } catch (Exception e) {
