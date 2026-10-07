@@ -97,12 +97,27 @@ public final class AppInfrastructure {
      * independent of Developer Center lock. Backed by a real local Entitlement.
      */
     public static boolean isPremiumTestMode(Context c) {
+        // Developer/test Premium is a debug-only capability.
+        // A release APK must never honor a persisted test flag or developer_test entitlement.
+        if (!BuildConfig.DEBUG) return false;
         if (sp(c).getBoolean(KEY_PREMIUM_TEST, false)) return true;
         Entitlement e = getActiveFullPremium(c);
         return e != null && SOURCE_DEVELOPER_TEST.equals(e.source);
     }
 
     public static void setPremiumTestMode(Context c, boolean on) {
+        // Hard release boundary: local Premium testing cannot be enabled from a release build.
+        if (!BuildConfig.DEBUG) {
+            sp(c).edit().putBoolean(KEY_PREMIUM_TEST, false).apply();
+            List<Entitlement> kept = new ArrayList<>();
+            for (Entitlement e : listEntitlements(c)) {
+                if (e == null || SOURCE_DEVELOPER_TEST.equals(e.source)
+                        || TEST_ENTITLEMENT_ID.equals(e.id)) continue;
+                kept.add(e);
+            }
+            saveEntitlements(c, kept);
+            return;
+        }
         sp(c).edit().putBoolean(KEY_PREMIUM_TEST, on).apply();
         List<Entitlement> list = listEntitlements(c);
         // أزل أي entitlement تجريبي سابق
@@ -444,7 +459,10 @@ public final class AppInfrastructure {
 
     public static Entitlement getActiveFullPremium(Context c) {
         for (Entitlement e : listEntitlements(c)) {
-            if ("full".equals(e.type) && e.isActiveNow()) return e;
+            if (e == null || !"full".equals(e.type) || !e.isActiveNow()) continue;
+            // Never accept a developer/test entitlement in a release build.
+            if (!BuildConfig.DEBUG && SOURCE_DEVELOPER_TEST.equals(e.source)) continue;
+            return e;
         }
         return null;
     }
