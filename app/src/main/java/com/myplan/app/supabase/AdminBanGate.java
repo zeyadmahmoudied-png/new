@@ -77,15 +77,16 @@ public final class AdminBanGate {
             String remote = SupabaseRepository.remoteUserUuid(local);
 
             if (!remote.isEmpty()) {
-                ApiResult<String> r = http.get("/rest/v1/profiles?id=eq." + enc(remote)
-                        + "&select=status&limit=1");
+                ApiResult<String> r = http.get("/rest/v1/app_users?id=eq." + enc(remote)
+                        + "&select=banned,status&limit=1");
                 if (r.isSuccess() && r.data != null) {
                     JSONArray a = new JSONArray(r.data);
                     accountFetched = true;
                     if (a.length() > 0) {
-                        String status = a.getJSONObject(0).optString("status", "active");
-                        out.accountBanned = "banned".equalsIgnoreCase(status)
-                                || "disabled".equalsIgnoreCase(status);
+                        JSONObject row = a.getJSONObject(0);
+                        out.accountBanned = row.optBoolean("banned", false)
+                                || "banned".equalsIgnoreCase(row.optString("status", ""))
+                                || "disabled".equalsIgnoreCase(row.optString("status", ""));
                         if (out.accountBanned) out.accountMessage =
                                 "تم حظر هذا الحساب من لوحة التحكم.";
                     }
@@ -93,8 +94,8 @@ public final class AdminBanGate {
             }
 
             String inst = AppInfrastructure.getInstallationId(app);
-            ApiResult<String> d = http.get("/rest/v1/devices?installation_id=eq."
-                    + enc(inst) + "&select=status&limit=1");
+            ApiResult<String> d = http.get("/rest/v1/device_controls?installation_id=eq."
+                    + enc(inst) + "&select=blocked&limit=1");
             if (d.isSuccess() && d.data != null) {
                 JSONArray a = new JSONArray(d.data);
                 deviceFetched = true;
