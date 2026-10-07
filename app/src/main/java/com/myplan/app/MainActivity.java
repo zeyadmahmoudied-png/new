@@ -198,7 +198,7 @@ public class MainActivity extends Activity {
             try {
                 if (com.myplan.app.supabase.SupabaseConfig.isConfigured(appCtx)) {
                     com.myplan.app.api.ApiResult<org.json.JSONArray> r =
-                            new com.myplan.app.supabase.SupabaseRepository(appCtx).fetchInboxMessages();
+                            com.myplan.app.remote.RemoteMessagingService.fetchInboxMessages(appCtx);
                     if (r != null && r.isSuccess() && r.data != null) {
                         InboxStore.saveCache(appCtx, r.data);
                     }
@@ -2496,7 +2496,7 @@ public class MainActivity extends Activity {
             row.setOnClickListener(v -> {
                 InboxStore.markRead(this, fm.id);
                 new Thread(() -> {
-                    try { new com.myplan.app.supabase.SupabaseRepository(getApplicationContext()).markSupportMessagesRead(); }
+                    try { com.myplan.app.remote.RemoteMessagingService.markRead(getApplicationContext()); }
                     catch (Exception ignored) {}
                 }, "support-read").start();
                 updateMoreNavBadge();
@@ -2536,7 +2536,7 @@ public class MainActivity extends Activity {
             String err = "";
             try {
                 com.myplan.app.api.ApiResult<Void> r =
-                        new com.myplan.app.supabase.SupabaseRepository(appCtx).deleteMessage(id);
+                        com.myplan.app.remote.RemoteMessagingService.deleteLegacyMessage(appCtx, id);
                 ok = r != null && r.isSuccess();
                 if (!ok && r != null) err = r.message != null ? r.message : "";
             } catch (Exception e) {
@@ -2662,8 +2662,7 @@ public class MainActivity extends Activity {
             boolean ok = false;
             try {
                 com.myplan.app.api.ApiResult<Void> remote =
-                        new com.myplan.app.supabase.SupabaseRepository(appCtx)
-                                .submitMessage(type, message, userId, installId);
+                        com.myplan.app.remote.RemoteMessagingService.send(appCtx, type, message, userId, installId);
                 ok = remote != null && remote.isSuccess();
             } catch (Exception ignored) {
                 ok = false;
