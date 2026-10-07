@@ -43,6 +43,7 @@ public final class SupabaseRepository {
             mergeRemoteConfigTable(snap);
             mergeFeatureFlags(snap);
             mergeAppVersions(snap);
+            mergeMaintenanceControls(snap);
             mergeAdSettings(snap);
             mergePremiumForCurrentUser(snap);
             mergeRemoteMessages(snap);
@@ -178,6 +179,25 @@ public final class SupabaseRepository {
             putIf(snap, "update_message", firstString(row, "update_message", "message"));
             putIf(snap, "release_notes", firstString(row, "release_notes", "notes"));
             if (row.has("force_update")) snap.put("force_update", row.optBoolean("force_update", false));
+        } catch (Exception ignored) {}
+    }
+
+    private void mergeMaintenanceControls(JSONObject snap) {
+        ApiResult<String> r = http.get("/rest/v1/maintenance_controls?select=*&id=eq.true&limit=1");
+        if (!r.isSuccess() || r.data == null) return;
+        try {
+            JSONArray arr = new JSONArray(r.data);
+            if (arr.length() == 0) return;
+            JSONObject row = arr.getJSONObject(0);
+            boolean enabled = row.optBoolean("enabled", false);
+            long now = System.currentTimeMillis();
+            long start = parseRemoteTime(row, "starts_at");
+            long end = parseRemoteTime(row, "ends_at");
+            if (start > 0 && now < start) enabled = false;
+            if (end > 0 && now > end) enabled = false;
+            snap.put("maintenance", enabled);
+            String msg = row.optString("message", "");
+            if (!msg.isEmpty()) snap.put("maintenance_message", msg);
         } catch (Exception ignored) {}
     }
 
@@ -320,7 +340,6 @@ public final class SupabaseRepository {
             if (account.displayName != null && !account.displayName.isEmpty()) {
                 body.put("display_name", account.displayName);
             }
-            body.put("status", "active");
             body.put("app_version", com.myplan.app.BuildConfig.VERSION_NAME);
             body.put("android_version", android.os.Build.VERSION.RELEASE);
             body.put("last_seen_at", new java.text.SimpleDateFormat(
